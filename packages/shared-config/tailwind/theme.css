@@ -1,0 +1,38 @@
+/**
+ * HireFast shared design tokens for Tailwind CSS v4.
+ * Import from each portal's global stylesheet.
+ */
+:root {
+  --hf-font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --hf-font-display: 'Fraunces', ui-serif, Georgia, serif;
+
+  --hf-background: #f7f8fa;
+  --hf-foreground: #0f172a;
+  --hf-muted: #64748b;
+  --hf-border: #e2e8f0;
+  --hf-primary: #0f766e;
+  --hf-primary-foreground: #f0fdfa;
+  --hf-secondary: #1e293b;
+  --hf-accent: #ea580c;
+  --hf-destructive: #dc2626;
+  --hf-success: #16a34a;
+  --hf-warning: #d97706;
+  --hf-card: #ffffff;
+  --hf-ring: #0f766e;
+}
+
+.dark {
+  --hf-background: #0b1220;
+  --hf-foreground: #e2e8f0;
+  --hf-muted: #94a3b8;
+  --hf-border: #1e293b;
+  --hf-primary: #2dd4bf;
+  --hf-primary-foreground: #042f2e;
+  --hf-secondary: #e2e8f0;
+  --hf-accent: #fb923c;
+  --hf-destructive: #f87171;
+  --hf-success: #4ade80;
+  --hf-warning: #fbbf24;
+  --hf-card: #111827;
+  --hf-ring: #2dd4bf;
+}
