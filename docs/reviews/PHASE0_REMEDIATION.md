@@ -19,7 +19,7 @@ Do **not** treat deferred auth feature APIs as a failed foundation gate.
 - [x] **ADR-010 revised** — entitlement model documented + schema/seed adjusted (`docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`)
 - [x] Partial unique: one active/trialing subscription per user
 - [x] **Authentication Foundation** documented and production-ready (JWT, middleware, Google config/provider, Redis, refresh-token store)
-- [ ] `packages/shared-ui` extracted; portal duplicates removed
+- [x] `packages/shared-ui` extracted; portal duplicates removed
 - [ ] BullMQ worker process convention + at least one registered consumer
 - [ ] Request ID middleware; `RATE_LIMITED` error code alignment
 - [ ] OpenAPI: freeze report-create status code (prefer 200 + GENERATING)

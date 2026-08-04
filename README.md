@@ -20,6 +20,7 @@ packages/
   shared-types/       # Shared TypeScript types
   shared-utils/       # Shared utilities
   shared-config/      # Shared config + design tokens
+  shared-ui/          # Shared UI primitives, providers, theme
 prisma/               # Prisma schema & migrations
 docker/               # Dockerfiles + docker-compose
 docs/                 # Architecture notes

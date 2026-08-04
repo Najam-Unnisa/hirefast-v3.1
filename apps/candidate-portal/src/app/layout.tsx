@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Fraunces } from 'next/font/google';
-import { AppProviders } from '@/components/providers/app-providers';
-import { AppShell } from '@/components/layout/app-shell';
+import { AppProviders, AppShell } from '@hirefast/shared-ui';
 import { APP_DESCRIPTION, APP_NAME } from '@/constants/app';
 import './globals.css';
 
@@ -34,7 +33,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${dmSans.variable} ${fraunces.variable} antialiased`}>
         <AppProviders>
-          <AppShell>{children}</AppShell>
+          <AppShell appName={APP_NAME} portalLabel="Candidate Portal">
+            {children}
+          </AppShell>
         </AppProviders>
       </body>
     </html>

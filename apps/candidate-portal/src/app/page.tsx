@@ -1,6 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Badge, Button } from '@hirefast/shared-ui';
 import { APP_NAME } from '@/constants/app';
 
 export default function HomePage(): React.ReactElement {
