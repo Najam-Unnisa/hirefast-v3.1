@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import { RequireRegistered } from '@/components/guards/require-registered';
-import { PremiumExperiencePage } from '@/features/registered/components/premium-experience-page';
+import { ProgressTrackingPanel } from '@/features/registered/components/progress-tracking-panel';
 
 export const metadata: Metadata = {
-  title: 'Premium',
+  title: 'Progress',
 };
 
-export default function PremiumPage(): React.ReactElement {
+export default function ProgressPage(): React.ReactElement {
   return (
     <RequireRegistered>
-      <PremiumExperiencePage />
+      <ProgressTrackingPanel />
     </RequireRegistered>
   );
 }

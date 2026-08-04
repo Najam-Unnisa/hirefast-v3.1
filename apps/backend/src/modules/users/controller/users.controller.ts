@@ -106,6 +106,38 @@ export class UsersController {
       next(error);
     }
   }
+
+  async dismissRecommendation(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await usersService.dismissRecommendation(req.user!.sub, req.params.recommendationId),
+        'Recommendation dismissed.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getSkillAnalytics(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await usersService.getSkillAnalytics(req.user!.sub),
+        'Skill analytics retrieved.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const usersController = new UsersController();

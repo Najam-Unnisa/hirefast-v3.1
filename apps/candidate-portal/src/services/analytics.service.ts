@@ -16,16 +16,28 @@ export type AnalyticsEventName =
   | 'results.locked_viewed'
   | 'registration.cta_clicked'
   | 'dashboard.viewed'
+  | 'premium.dashboard_viewed'
   | 'profile.updated'
   | 'resume.uploaded'
   | 'ai_report.viewed'
   | 'jrs.viewed'
   | 'skill_scores.viewed'
+  | 'skill_analytics.viewed'
+  | 'progress_tracking.viewed'
   | 'learning_recommendations.viewed'
-  | 'premium.upgrade_cta_clicked';
+  | 'gamification.badge_earned'
+  | 'gamification.level_up'
+  | 'gamification.daily_streak_updated'
+  | 'premium.upgrade_cta_clicked'
+  | 'premium.activated'
+  | 'premium.downgraded'
+  | 'premium.assessment_started'
+  | 'premium.assessment_completed'
+  | 'premium.report_viewed'
+  | 'premium.feature_engagement';
 
 /**
- * Fire-and-forget client analytics for guest funnel measurement.
+ * Fire-and-forget client analytics for funnel and engagement measurement.
  */
 export function trackClientEvent(
   eventName: AnalyticsEventName,
@@ -45,6 +57,6 @@ export function trackClientEvent(
     body: JSON.stringify({ eventName, properties }),
     keepalive: true,
   }).catch(() => {
-    // Analytics must never block the guest experience.
+    // Analytics must never block the candidate experience.
   });
 }

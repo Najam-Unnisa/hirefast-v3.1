@@ -65,6 +65,15 @@ export function CandidateShell({ children }: { children: React.ReactNode }): Rea
                 <Link href="/reports" className="opacity-90 hover:opacity-100">
                   Reports
                 </Link>
+                <Link href="/analytics" className="opacity-90 hover:opacity-100">
+                  Analytics
+                </Link>
+                <Link href="/progress" className="opacity-90 hover:opacity-100">
+                  Progress
+                </Link>
+                <Link href="/premium" className="opacity-90 hover:opacity-100">
+                  Premium
+                </Link>
                 <Link href="/profile" className="opacity-90 hover:opacity-100">
                   Profile
                 </Link>

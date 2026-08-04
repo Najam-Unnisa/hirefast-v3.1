@@ -59,6 +59,27 @@ export async function seedGamification(prisma: PrismaClient): Promise<void> {
       iconKey: 'badge-communication',
       xpReward: 75,
     },
+    {
+      code: 'PREMIUM_MEMBER',
+      name: 'Premium Member',
+      description: 'Activated HireFast Premium',
+      iconKey: 'badge-premium',
+      xpReward: 100,
+    },
+    {
+      code: 'PREMIUM_ASSESSMENT',
+      name: 'Premium Practitioner',
+      description: 'Completed a Premium assessment',
+      iconKey: 'badge-premium-assessment',
+      xpReward: 120,
+    },
+    {
+      code: 'SKILL_ANALYST',
+      name: 'Skill Analyst',
+      description: 'Reviewed detailed skill analytics',
+      iconKey: 'badge-analytics',
+      xpReward: 40,
+    },
   ] as const;
 
   for (const badge of badges) {
@@ -96,6 +117,12 @@ export async function seedGamification(prisma: PrismaClient): Promise<void> {
       sourceType: 'BADGE_UNLOCK' as const,
       xpAmount: 0,
       description: 'Placeholder rule — badge XP comes from badge.xpReward',
+    },
+    {
+      eventKey: 'premium.assessment.completed',
+      sourceType: 'ASSESSMENT_COMPLETE' as const,
+      xpAmount: 150,
+      description: 'XP awarded when a Premium assessment is completed',
     },
     {
       eventKey: 'admin.adjustment',

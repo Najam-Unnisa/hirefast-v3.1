@@ -21,7 +21,14 @@ export function RegisteredDashboard(): React.ReactElement {
         if (!cancelled) {
           setData(dashboard);
           setLoading(false);
-          trackClientEvent('dashboard.viewed');
+          trackClientEvent(
+            dashboard.subscription.isPremium ? 'premium.dashboard_viewed' : 'dashboard.viewed',
+          );
+          if (dashboard.recommendations.length) {
+            trackClientEvent('learning_recommendations.viewed', {
+              count: dashboard.recommendations.length,
+            });
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -55,6 +62,7 @@ export function RegisteredDashboard(): React.ReactElement {
     );
   }
 
+  const isPremium = Boolean(data.subscription.isPremium ?? data.subscription.canAccessPremium);
   const levelProgress =
     data.gamification.nextLevel != null
       ? Math.min(
@@ -74,16 +82,32 @@ export function RegisteredDashboard(): React.ReactElement {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-3"
       >
-        <p className="text-sm font-medium tracking-wide text-teal-700 uppercase">Dashboard</p>
+        <p className="text-sm font-medium tracking-wide text-teal-700 uppercase">
+          {isPremium ? 'Premium dashboard' : 'Dashboard'}
+        </p>
         <h1 className="font-display text-3xl font-semibold tracking-tight sm:text-4xl">
           Welcome back
           {data.profile.displayName ? `, ${data.profile.displayName.split(' ')[0]}` : ''}
         </h1>
         <p className="max-w-2xl text-[var(--hf-muted)]">
-          Track your employability progress, review insights, and keep building momentum on the free
-          plan.
+          {isPremium
+            ? 'Your employability status, advanced insights, and personalized next steps — all in one place.'
+            : 'Track your employability progress, review insights, and keep building momentum on the free plan.'}
         </p>
       </motion.header>
+
+      {isPremium && data.premiumHighlights?.length ? (
+        <section className="space-y-3 border-y border-[var(--hf-border)] py-5">
+          <h2 className="font-display text-lg font-semibold">Premium highlights</h2>
+          <ul className="grid gap-2 sm:grid-cols-3">
+            {data.premiumHighlights.map((item) => (
+              <li key={item} className="text-sm text-[var(--hf-muted)]">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <motion.div
@@ -104,16 +128,16 @@ export function RegisteredDashboard(): React.ReactElement {
             </div>
             <Button asChild variant="outline">
               <Link
-                href={data.jrs ? '/history' : '/assessments'}
+                href={data.jrs ? (isPremium ? '/progress' : '/history') : '/assessments'}
                 onClick={() => trackClientEvent('jrs.viewed')}
               >
-                {data.jrs ? 'View history' : 'Start assessment'}
+                {data.jrs ? (isPremium ? 'View trends' : 'View history') : 'Start assessment'}
               </Link>
             </Button>
           </div>
           {data.jrs?.skillScores?.length ? (
             <ul className="grid gap-3 sm:grid-cols-2">
-              {data.jrs.skillScores.slice(0, 4).map((skill) => (
+              {data.jrs.skillScores.slice(0, isPremium ? 6 : 4).map((skill) => (
                 <li key={skill.skillId} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>{skill.skillName}</span>
@@ -128,6 +152,18 @@ export function RegisteredDashboard(): React.ReactElement {
                 </li>
               ))}
             </ul>
+          ) : null}
+          {isPremium ? (
+            <Button asChild variant="ghost" className="px-0">
+              <Link
+                href="/analytics"
+                onClick={() =>
+                  trackClientEvent('premium.feature_engagement', { feature: 'skill_analytics' })
+                }
+              >
+                Open detailed skill analytics
+              </Link>
+            </Button>
           ) : null}
         </motion.div>
 
@@ -158,8 +194,35 @@ export function RegisteredDashboard(): React.ReactElement {
               <dd className="font-medium">{data.gamification.badgesEarned}</dd>
             </div>
           </dl>
+          <p className="text-xs text-[var(--hf-muted)]">
+            Longest streak: {data.gamification.longestStreak}d
+          </p>
         </motion.div>
       </section>
+
+      {isPremium && data.progressTrend && data.progressTrend.length > 1 ? (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 className="font-display text-xl font-semibold">Progress trends</h2>
+            <Button asChild variant="outline">
+              <Link href="/progress">Full progress</Link>
+            </Button>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {data.progressTrend.slice(-4).map((point) => (
+              <li
+                key={`${point.assessmentTitle}-${point.calculatedAt}`}
+                className="border-t border-[var(--hf-border)] pt-3"
+              >
+                <p className="font-display text-2xl font-semibold">
+                  {Math.round(point.overallScore)}
+                </p>
+                <p className="text-sm text-[var(--hf-muted)]">{point.assessmentTitle}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-4">
@@ -187,7 +250,8 @@ export function RegisteredDashboard(): React.ReactElement {
             </div>
           ) : (
             <p className="text-sm text-[var(--hf-muted)]">
-              No assessments yet. Start with a free assessment.
+              No assessments yet. Start with {isPremium ? 'a Premium or free' : 'a free'}{' '}
+              assessment.
             </p>
           )}
         </div>
@@ -226,8 +290,33 @@ export function RegisteredDashboard(): React.ReactElement {
         </div>
 
         <div className="space-y-4">
-          <h2 className="font-display text-xl font-semibold">Badges</h2>
-          {data.badges.length ? (
+          <h2 className="font-display text-xl font-semibold">
+            {isPremium ? 'Recent activity' : 'Badges'}
+          </h2>
+          {isPremium ? (
+            data.recentActivity?.length ? (
+              <ul className="space-y-3">
+                {data.recentActivity.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--hf-border)] pt-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-medium">{item.title}</p>
+                      <p className="text-[var(--hf-muted)]">{item.status}</p>
+                    </div>
+                    <time className="text-[var(--hf-muted)]">
+                      {new Date(item.at).toLocaleDateString()}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-[var(--hf-muted)]">
+                Activity appears as you take assessments.
+              </p>
+            )
+          ) : data.badges.length ? (
             <ul className="grid grid-cols-2 gap-3">
               {data.badges.map((badge) => (
                 <li key={badge.code} className="space-y-1 border-t border-[var(--hf-border)] pt-3">
@@ -242,24 +331,60 @@ export function RegisteredDashboard(): React.ReactElement {
         </div>
       </section>
 
-      <section className="flex flex-col gap-3 border-t border-[var(--hf-border)] pt-8 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="font-display text-xl font-semibold">{data.upsell.title}</h2>
-          <p className="text-sm text-[var(--hf-muted)]">{data.upsell.message}</p>
-        </div>
-        <Button asChild variant="outline">
-          <Link
-            href={data.upsell.href}
-            onClick={() => trackClientEvent('premium.upgrade_cta_clicked', { source: 'dashboard' })}
-          >
-            {data.upsell.cta}
-          </Link>
-        </Button>
-      </section>
+      {isPremium && data.badges.length ? (
+        <section className="space-y-4">
+          <h2 className="font-display text-xl font-semibold">Badges</h2>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {data.badges.map((badge) => (
+              <li key={badge.code} className="space-y-1 border-t border-[var(--hf-border)] pt-3">
+                <p className="font-medium">{badge.name}</p>
+                <p className="text-xs text-[var(--hf-muted)]">{badge.description}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {data.upsell ? (
+        <section className="flex flex-col gap-3 border-t border-[var(--hf-border)] pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-display text-xl font-semibold">{data.upsell.title}</h2>
+            <p className="text-sm text-[var(--hf-muted)]">{data.upsell.message}</p>
+          </div>
+          <Button asChild variant="outline">
+            <Link
+              href={data.upsell.href}
+              onClick={() =>
+                trackClientEvent('premium.upgrade_cta_clicked', { source: 'dashboard' })
+              }
+            >
+              {data.upsell.cta}
+            </Link>
+          </Button>
+        </section>
+      ) : (
+        <section className="flex flex-wrap gap-3 border-t border-[var(--hf-border)] pt-8">
+          <Button asChild variant="outline">
+            <Link href="/analytics">Skill analytics</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/progress">Progress tracking</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/assessments">Assessment catalog</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/premium">Manage Premium</Link>
+          </Button>
+        </section>
+      )}
 
       <p className="text-xs text-[var(--hf-muted)]">
         Plan: {data.subscription.planCode} · Assessments completed: {data.assessments.completed} ·
-        Available free: {data.assessments.available}
+        Available: {data.assessments.available}
+        {isPremium && data.assessments.availablePremium != null
+          ? ` (${data.assessments.availablePremium} Premium)`
+          : ''}
       </p>
     </div>
   );

@@ -20,7 +20,13 @@ export interface DashboardData {
       weight: number;
     }>;
   } | null;
-  assessments: { completed: number; inProgress: number; available: number };
+  assessments: {
+    completed: number;
+    inProgress: number;
+    available: number;
+    availableFree?: number;
+    availablePremium?: number;
+  };
   latestAttempt: {
     id: string;
     assessmentId: string;
@@ -52,22 +58,104 @@ export interface DashboardData {
     priority: number;
     skill: { code: string; name: string } | null;
   }>;
+  recentActivity?: Array<{
+    id: string;
+    type: string;
+    title: string;
+    status: string;
+    at: string;
+  }>;
+  progressTrend?: Array<{
+    overallScore: number;
+    band: string | null;
+    calculatedAt: string;
+    assessmentTitle: string;
+  }>;
   subscription: {
     planCode: string;
     status: string;
     features: string[];
     canAccessPremium: boolean;
+    isPremium?: boolean;
   };
   nextSteps: Array<{ key: string; title: string; href: string }>;
-  upsell: { title: string; message: string; cta: string; href: string };
+  premiumHighlights?: string[];
+  upsell: { title: string; message: string; cta: string; href: string } | null;
 }
 
 export async function fetchDashboard(): Promise<DashboardData> {
   return apiClient.get<DashboardData>('/dashboard/me');
 }
 
-export async function fetchLatestJrs() {
-  return apiClient.get('/users/me/jrs/latest');
+export async function fetchProgress() {
+  return apiClient.get<{
+    jrsHistory: Array<{
+      overallScore: number;
+      band: string | null;
+      calculatedAt: string;
+      assessmentTitle: string;
+      accessTier: string;
+    }>;
+    assessmentComparisons: Array<{
+      attemptId: string;
+      title: string;
+      accessTier: string;
+      completedAt: string | null;
+      score: number | null;
+      passed: boolean | null;
+    }>;
+    improvement: { jrsDelta: number; direction: string; points: number };
+    latestSkills: Array<{ skillCode: string; skillName: string; score: number }>;
+  }>('/dashboard/me/progress');
+}
+
+export async function fetchSkillAnalytics() {
+  return apiClient.get<{
+    skills: Array<{
+      skillId: string;
+      skillCode: string;
+      skillName: string;
+      latestScore: number;
+      firstScore: number;
+      averageScore: number;
+      delta: number;
+      samples: number;
+      trend: Array<{ score: number; calculatedAt: string; assessmentTitle: string }>;
+    }>;
+    weakest: Array<{ skillName: string; latestScore: number }>;
+    strongest: Array<{ skillName: string; latestScore: number }>;
+    distribution: { ready: number; developing: number; foundational: number };
+    jrsHistory: Array<{
+      overallScore: number;
+      band: string | null;
+      calculatedAt: string;
+      assessmentTitle: string;
+    }>;
+  }>('/users/me/analytics/skills');
+}
+
+export async function fetchSubscription() {
+  return apiClient.get<{
+    planCode: string | null;
+    status: string;
+    features: string[];
+    isPremium: boolean;
+    isExpired?: boolean;
+    message?: string;
+    currentPeriodEnd?: string;
+  }>('/subscriptions/me');
+}
+
+export async function activatePremium() {
+  return apiClient.post('/subscriptions/me/activate-premium');
+}
+
+export async function downgradeSubscription() {
+  return apiClient.post('/subscriptions/me/downgrade');
+}
+
+export async function expirePremiumForTesting() {
+  return apiClient.post('/subscriptions/dev/expire-premium');
 }
 
 export async function fetchMyReports(page = 1, limit = 20) {
@@ -107,14 +195,6 @@ export async function fetchRecommendations() {
       skill: { code: string; name: string } | null;
     }>
   >('/users/me/recommendations');
-}
-
-export async function fetchGamificationSummary() {
-  return apiClient.get('/gamification/me');
-}
-
-export async function fetchMyBadges() {
-  return apiClient.get('/gamification/me/badges');
 }
 
 export async function fetchMyAttempts(page = 1, limit = 20, status?: string) {

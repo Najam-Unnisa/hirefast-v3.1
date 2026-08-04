@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import { RequireRegistered } from '@/components/guards/require-registered';
-import { PremiumExperiencePage } from '@/features/registered/components/premium-experience-page';
+import { SkillAnalyticsPanel } from '@/features/registered/components/skill-analytics-panel';
 
 export const metadata: Metadata = {
-  title: 'Premium',
+  title: 'Skill Analytics',
 };
 
-export default function PremiumPage(): React.ReactElement {
+export default function AnalyticsPage(): React.ReactElement {
   return (
     <RequireRegistered>
-      <PremiumExperiencePage />
+      <SkillAnalyticsPanel />
     </RequireRegistered>
   );
 }

@@ -48,5 +48,18 @@ usersRouter.get(
   authorize(ROLES.USER, ROLES.ADMIN),
   (req, res, next) => usersController.listRecommendations(req, res, next),
 );
+usersRouter.patch(
+  '/me/recommendations/:recommendationId/dismiss',
+  authenticate,
+  authorize(ROLES.USER, ROLES.ADMIN),
+  (req, res, next) => usersController.dismissRecommendation(req, res, next),
+);
+usersRouter.get(
+  '/me/analytics/skills',
+  authenticate,
+  authorize(ROLES.USER, ROLES.ADMIN),
+  requireFeature(PLAN_FEATURES.ANALYTICS_ADVANCED),
+  (req, res, next) => usersController.getSkillAnalytics(req, res, next),
+);
 
 export { usersRouter };

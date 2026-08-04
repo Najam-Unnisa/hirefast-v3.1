@@ -61,15 +61,22 @@ export function AssessmentCatalog(): React.ReactElement {
     try {
       const attempt = await startAttempt(assessment.id);
       saveAttemptId(attempt.id);
-      trackClientEvent(
-        attempt.status === 'IN_PROGRESS' ? 'assessment.started' : 'assessment.started',
-        { attemptId: attempt.id },
-      );
+      trackClientEvent('assessment.started', {
+        attemptId: attempt.id,
+        accessTier: assessment.accessTier,
+      });
+      if (assessment.accessTier === 'PREMIUM') {
+        trackClientEvent('premium.assessment_started', {
+          attemptId: attempt.id,
+          assessmentId: assessment.id,
+        });
+      }
       router.push(`/assessment/${attempt.id}`);
     } catch (err) {
       if (err instanceof ApiClientError) {
         const premium = err.errors.some((item) => item.code === 'PREMIUM_REQUIRED');
         if (premium) {
+          trackClientEvent('premium.upgrade_cta_clicked', { source: 'assessment_start_blocked' });
           router.push('/premium');
           return;
         }
@@ -94,7 +101,8 @@ export function AssessmentCatalog(): React.ReactElement {
       <div className="mb-8 space-y-2">
         <h1 className="font-display text-3xl font-semibold">Assessments</h1>
         <p className="text-[var(--hf-muted)]">
-          Free assessments are ready to take. Premium assessments stay locked until you upgrade.
+          Configuration-driven catalog of General and Premium assessments. Premium items unlock
+          automatically with an active subscription.
         </p>
       </div>
 
