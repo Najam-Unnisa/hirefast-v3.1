@@ -75,7 +75,10 @@ pnpm --filter @hirefast/shared-utils build
 pnpm --filter @hirefast/shared-config build
 pnpm db:generate
 pnpm db:migrate:dev
+pnpm db:seed
 ```
+
+Database architecture docs live in `docs/database/`.
 
 ### 5. Run apps
 
