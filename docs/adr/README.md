@@ -13,7 +13,7 @@ Canonical decisions for HireFast. Full critique: `docs/reviews/ARCHITECTURE_REVI
 | [ADR-007](./ADR-007-bullmq.md)                  | BullMQ async jobs                      | Accepted                   |
 | [ADR-008](./ADR-008-ai-provider.md)             | AI provider abstraction                | Accepted                   |
 | [ADR-009](./ADR-009-object-storage.md)          | R2/S3 file metadata                    | Accepted                   |
-| [ADR-010](./ADR-010-rbac-vs-subscription.md)    | Roles vs subscriptions                 | **Contested — revise**     |
+| [ADR-010](./ADR-010-rbac-vs-subscription.md)    | Roles vs subscriptions                 | **Accepted**               |
 | [ADR-011](./ADR-011-openapi-source-of-truth.md) | OpenAPI design-time vs runtime Swagger | Accepted (revised)         |
 | [ADR-012](./ADR-012-soft-deletes.md)            | Selective soft deletes                 | Accepted                   |
 | [ADR-013](./ADR-013-dual-portals.md)            | Candidate + Admin portals              | Accepted (needs shared-ui) |
