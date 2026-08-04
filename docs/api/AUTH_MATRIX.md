@@ -1,5 +1,10 @@
 # Authentication & Authorization Matrix
 
+> **Architecture-First note:** This matrix is the **design-time** authz contract.  
+> **Authentication Foundation** (JWT, middleware, Google provider, Redis refresh store) is implemented.  
+> **Authentication Feature Implementation** (login/refresh/logout/session HTTP APIs) is planned — see `docs/architecture/AUTHENTICATION_FOUNDATION.md`.  
+> This document does not change endpoint contracts; it clarifies delivery phases.
+
 ## Separation of concerns
 
 | Concern               | Codes                        | Source of truth                                        |

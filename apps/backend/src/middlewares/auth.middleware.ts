@@ -10,7 +10,8 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Authentication middleware — verifies JWT access token.
- * Does not implement login; only reusable auth infrastructure.
+ * Foundation only: does not implement login, refresh, or logout HTTP APIs.
+ * Feature modules mount these helpers when Auth Feature Implementation ships.
  */
 export function authenticate(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {
   try {

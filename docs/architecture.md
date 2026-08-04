@@ -44,14 +44,17 @@ See:
 - Runtime Swagger (`/docs`) documents **implemented Express routes only**
 - `docs/api/REVIEW.md` — API architecture review
 
-## Authorization model
+## Authorization & authentication model
 
 Identity, RBAC, and commercial access are separated:
 
 - `docs/architecture/AUTHORIZATION_FLOW.md` — Auth → RBAC → Subscription → Feature
 - `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md` — Blocker #2 resolution review
+- `docs/architecture/AUTHENTICATION_FOUNDATION.md` — Foundation (✅) vs Feature Implementation (⏳)
 
 Roles (`ADMIN` | `USER` | `GUEST`) are identity only. Plans (`FREE` | `PREMIUM`) are commercial only.
+
+Authentication **Foundation** (JWT, middleware, Google OAuth provider, Redis refresh store) is implemented. Authentication **Feature Implementation** (login/session HTTP APIs) is intentionally deferred.
 
 ## Architecture review (gate)
 
@@ -61,9 +64,13 @@ See:
 - `docs/reviews/PHASE0_REMEDIATION.md` — mandatory P0 checklist
 - `docs/adr/` — Architecture Decision Records
 
-**Status:** Conditional approval — complete Phase 0 before domain features.
+**Status:** Conditional approval for remaining Phase 0 **architecture** items. Authentication Foundation is complete; auth HTTP APIs are Feature Implementation (not a foundation defect).
 
 ## Notes
 
 This repository currently contains the **engineering foundation**, **complete database architecture**, and **REST API contract**.
-Application business features (auth flows, assessments runtime, JRS calculation, reports UI) are intentionally not implemented yet.
+
+Under **Architecture-First** methodology:
+
+- Authentication **Foundation** is implemented and production-ready for feature teams to consume.
+- Authentication **Feature Implementation** (Google login routes, refresh/logout/session APIs, FE session UX) and other business features (assessments, JRS, reports UI) are intentionally not implemented yet.
