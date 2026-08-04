@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle, Button, LoadingSpinner } from '@hi
 import { getAttemptStatus } from '@/services/assessments.service';
 import { trackClientEvent } from '@/services/analytics.service';
 import { ApiClientError } from '@/services/api-client';
+import { useSession } from '@/providers/session-provider';
 
 interface ProcessingPanelProps {
   attemptId: string;
@@ -14,6 +15,7 @@ interface ProcessingPanelProps {
 
 export function ProcessingPanel({ attemptId }: ProcessingPanelProps): React.ReactElement {
   const router = useRouter();
+  const { isGuest } = useSession();
   const [message, setMessage] = useState('Evaluating your responses…');
   const [error, setError] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
@@ -22,6 +24,12 @@ export function ProcessingPanel({ attemptId }: ProcessingPanelProps): React.Reac
     let cancelled = false;
     let ticks = 0;
 
+    function nextPath(): string {
+      return isGuest
+        ? `/results-locked?attemptId=${attemptId}`
+        : `/assessment/${attemptId}/results`;
+    }
+
     async function poll(): Promise<void> {
       try {
         const status = await getAttemptStatus(attemptId);
@@ -29,7 +37,7 @@ export function ProcessingPanel({ attemptId }: ProcessingPanelProps): React.Reac
 
         if (status.status === 'COMPLETED' || status.evaluationStatus === 'COMPLETED') {
           trackClientEvent('evaluation.completed', { attemptId });
-          router.replace(`/results-locked?attemptId=${attemptId}`);
+          router.replace(nextPath());
           return;
         }
 
@@ -68,7 +76,7 @@ export function ProcessingPanel({ attemptId }: ProcessingPanelProps): React.Reac
       cancelled = true;
       clearInterval(interval);
     };
-  }, [attemptId, router]);
+  }, [attemptId, router, isGuest]);
 
   return (
     <section className="mx-auto flex min-h-[60vh] max-w-lg flex-col items-center justify-center gap-6 px-4 py-16 text-center">
@@ -91,7 +99,16 @@ export function ProcessingPanel({ attemptId }: ProcessingPanelProps): React.Reac
       ) : null}
 
       {(error || timedOut) && (
-        <Button type="button" onClick={() => router.push(`/results-locked?attemptId=${attemptId}`)}>
+        <Button
+          type="button"
+          onClick={() =>
+            router.push(
+              isGuest
+                ? `/results-locked?attemptId=${attemptId}`
+                : `/assessment/${attemptId}/results`,
+            )
+          }
+        >
           Continue
         </Button>
       )}

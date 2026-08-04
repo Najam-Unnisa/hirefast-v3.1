@@ -10,10 +10,19 @@ export type AnalyticsEventName =
   | 'assessment.auto_saved'
   | 'assessment.completed'
   | 'assessment.submitted'
+  | 'assessment.resumed'
   | 'evaluation.started'
   | 'evaluation.completed'
   | 'results.locked_viewed'
-  | 'registration.cta_clicked';
+  | 'registration.cta_clicked'
+  | 'dashboard.viewed'
+  | 'profile.updated'
+  | 'resume.uploaded'
+  | 'ai_report.viewed'
+  | 'jrs.viewed'
+  | 'skill_scores.viewed'
+  | 'learning_recommendations.viewed'
+  | 'premium.upgrade_cta_clicked';
 
 /**
  * Fire-and-forget client analytics for guest funnel measurement.

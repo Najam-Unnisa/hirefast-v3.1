@@ -8,6 +8,9 @@ export interface GuestAssessmentSummary {
   description: string | null;
   instructions: string | null;
   durationMinutes: number | null;
+  accessTier?: 'FREE' | 'PREMIUM' | string;
+  locked?: boolean;
+  upgradeRequired?: boolean;
   _count: { questions: number };
 }
 

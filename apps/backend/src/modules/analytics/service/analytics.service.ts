@@ -11,10 +11,22 @@ const ALLOWED_EVENTS = new Set([
   'assessment.auto_saved',
   'assessment.completed',
   'assessment.submitted',
+  'assessment.resumed',
   'evaluation.started',
   'evaluation.completed',
   'results.locked_viewed',
   'registration.cta_clicked',
+  'dashboard.viewed',
+  'profile.updated',
+  'resume.uploaded',
+  'ai_report.viewed',
+  'jrs.viewed',
+  'skill_scores.viewed',
+  'learning_recommendations.viewed',
+  'gamification.badge_earned',
+  'gamification.level_up',
+  'gamification.daily_streak_updated',
+  'premium.upgrade_cta_clicked',
 ]);
 
 export class AnalyticsIngestService {

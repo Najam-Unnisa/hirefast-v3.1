@@ -283,12 +283,14 @@ export class AuthService {
     return { loggedOut: true };
   }
 
-  async getMe(userId: string): Promise<UserWithIdentityData> {
+  async getMe(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
         email: true,
+        status: true,
+        emailVerified: true,
         role: { select: { name: true } },
         profile: {
           select: {
@@ -303,7 +305,16 @@ export class AuthService {
     if (!user) {
       throw new NotFoundError('User not found.');
     }
-    return user;
+
+    const { getActiveSubscription } = await import('../../../services/subscription-access.service');
+    const subscription = await getActiveSubscription(userId);
+
+    return {
+      ...user,
+      subscription: subscription
+        ? { planCode: subscription.planCode, status: subscription.status }
+        : null,
+    };
   }
 
   async getSession(userId: string): Promise<{ authenticated: true; user: UserWithIdentityData }> {

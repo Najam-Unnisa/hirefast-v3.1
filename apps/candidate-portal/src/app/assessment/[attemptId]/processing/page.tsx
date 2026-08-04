@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { RequireGuest } from '@/components/guards/require-guest';
+import { RequireAuth } from '@/components/guards/require-auth';
 import { ProcessingPanel } from '@/features/guest/components/processing-panel';
 
 export const metadata: Metadata = {
@@ -13,8 +13,8 @@ export default async function AssessmentProcessingPage({
 }): Promise<React.ReactElement> {
   const { attemptId } = await params;
   return (
-    <RequireGuest>
+    <RequireAuth>
       <ProcessingPanel attemptId={attemptId} />
-    </RequireGuest>
+    </RequireAuth>
   );
 }

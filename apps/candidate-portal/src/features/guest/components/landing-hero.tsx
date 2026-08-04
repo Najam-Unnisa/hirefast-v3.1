@@ -28,6 +28,10 @@ export function LandingHero(): React.ReactElement {
         window.location.assign('/welcome');
         return;
       }
+      if (status === 'authenticated' && !isGuest) {
+        window.location.assign('/dashboard');
+        return;
+      }
       await beginGoogleSignIn();
     } catch (err) {
       setBusy(false);

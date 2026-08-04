@@ -60,14 +60,14 @@ export function AuthCallbackClient(): React.ReactElement {
     let cancelled = false;
     async function complete(): Promise<void> {
       try {
-        await establishSession({
+        const user = await establishSession({
           accessToken: accessToken!,
           refreshToken: refreshToken!,
           expiresIn,
         });
         trackClientEvent('auth.google_sign_in_completed');
         if (!cancelled) {
-          router.replace('/welcome');
+          router.replace(user.role === 'GUEST' ? '/welcome' : '/dashboard');
         }
       } catch (err) {
         if (!cancelled) {

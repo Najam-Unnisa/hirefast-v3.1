@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
-import { RestrictedForGuests } from '@/components/guards/restricted-for-guests';
+import { RequireRegistered } from '@/components/guards/require-registered';
+import { PremiumUpsellPage } from '@/features/registered/components/premium-upsell-page';
 
 export const metadata: Metadata = {
   title: 'Premium',
 };
 
 export default function PremiumPage(): React.ReactElement {
-  return <RestrictedForGuests areaLabel="Premium features" />;
+  return (
+    <RequireRegistered>
+      <PremiumUpsellPage />
+    </RequireRegistered>
+  );
 }

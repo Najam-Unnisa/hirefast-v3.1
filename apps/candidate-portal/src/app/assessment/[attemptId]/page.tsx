@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { RequireGuest } from '@/components/guards/require-guest';
+import { RequireAuth } from '@/components/guards/require-auth';
 import { AssessmentPlayer } from '@/features/guest/components/assessment-player';
 
 export const metadata: Metadata = {
@@ -13,8 +13,8 @@ export default async function AssessmentPage({
 }): Promise<React.ReactElement> {
   const { attemptId } = await params;
   return (
-    <RequireGuest>
+    <RequireAuth>
       <AssessmentPlayer attemptId={attemptId} />
-    </RequireGuest>
+    </RequireAuth>
   );
 }

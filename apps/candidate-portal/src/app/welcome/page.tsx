@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function WelcomePage(): React.ReactElement {
   return (
-    <RequireGuest>
+    <RequireGuest registeredRedirect="/dashboard">
       <WelcomePanel />
     </RequireGuest>
   );

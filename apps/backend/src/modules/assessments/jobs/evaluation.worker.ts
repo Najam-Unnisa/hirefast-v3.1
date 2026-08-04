@@ -1,6 +1,7 @@
 import { prisma } from '../../../config/database';
 import { createWorker, QUEUE_NAMES } from '../../../jobs';
 import { trackEvent } from '../../../services/analytics.service';
+import { gamificationService } from '../../../services/gamification.service';
 
 export interface AssessmentEvaluationJob {
   attemptId: string;
@@ -29,6 +30,7 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
               where: { deletedAt: null },
               include: { options: true },
             },
+            skills: { include: { skill: true } },
           },
         },
         responses: {
@@ -60,12 +62,28 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
 
     const percentage = maxScore > 0 ? Number(((totalScore / maxScore) * 100).toFixed(2)) : 0;
     const passingScore = Number(attempt.assessment.passingScore ?? 60);
+    const passed = percentage >= passingScore;
     const evaluatedAt = new Date();
-    const summary = {
-      overview: 'Automated communication assessment evaluation completed.',
-      percentage,
-      note: 'Qualitative feedback is a placeholder for a future AI provider.',
-    };
+    const band = percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL';
+
+    const strengths = passed
+      ? [
+          'Clear structure in workplace communication responses',
+          'Demonstrated professional tone in written prompts',
+        ]
+      : ['Willingness to complete a full communication assessment'];
+    const weaknesses = passed
+      ? ['Can deepen clarity when requesting action under time pressure']
+      : [
+          'Communication clarity needs more practice',
+          'Professional phrasing can be more concise and specific',
+        ];
+    const summary = passed
+      ? 'Your communication fundamentals are developing well. Continue refining clarity and audience awareness.'
+      : 'Your results highlight clear opportunities to strengthen workplace communication basics.';
+
+    const strengthsText = strengths.map((item) => `• ${item}`).join('\n');
+    const weaknessesText = weaknesses.map((item) => `• ${item}`).join('\n');
 
     await prisma.$transaction(async (tx) => {
       await tx.attemptEvaluation.upsert({
@@ -75,7 +93,7 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
           totalScore,
           maxScore,
           percentage,
-          passed: percentage >= passingScore,
+          passed,
           evaluatedAt,
           errorMessage: null,
         },
@@ -85,18 +103,21 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
           totalScore,
           maxScore,
           percentage,
-          passed: percentage >= passingScore,
+          passed,
           evaluatedAt,
         },
       });
+
       await tx.aiEvaluation.upsert({
         where: { attemptId },
         update: {
           status: 'COMPLETED',
           provider: 'hirefast-stub',
           model: 'deterministic-v1',
-          summary: summary.overview,
-          rawResponse: summary,
+          summary,
+          strengths: strengthsText,
+          weaknesses: weaknessesText,
+          rawResponse: { summary, strengths, weaknesses, percentage },
           processedAt: evaluatedAt,
           errorMessage: null,
         },
@@ -105,11 +126,14 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
           status: 'COMPLETED',
           provider: 'hirefast-stub',
           model: 'deterministic-v1',
-          summary: summary.overview,
-          rawResponse: summary,
+          summary,
+          strengths: strengthsText,
+          weaknesses: weaknessesText,
+          rawResponse: { summary, strengths, weaknesses, percentage },
           processedAt: evaluatedAt,
         },
       });
+
       await tx.assessmentAttempt.update({
         where: { id: attemptId },
         data: {
@@ -118,23 +142,29 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
         },
       });
 
-      // Always persist JRS; RESULTS_LOCKED gates visibility on read, not persistence.
-      await tx.jobReadinessScore.upsert({
-        where: { attemptId },
-        update: {
-          overallScore: percentage,
-          band: percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL',
-          calculatedAt: evaluatedAt,
-        },
-        create: {
-          attemptId,
-          userId: attempt.userId,
-          overallScore: percentage,
-          band: percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL',
-          calculatedAt: evaluatedAt,
-        },
+      await upsertUnlockedResults({
+        tx,
+        attemptId,
+        userId: attempt.userId,
+        percentage,
+        band,
+        evaluatedAt,
+        summary,
+        strengths,
+        weaknesses,
+        assessmentTitle: attempt.assessment.title,
+        skills: attempt.assessment.skills,
       });
     });
+
+    // Gamification is a registered-user concern; skip while results remain locked.
+    if (!attempt.resultsLocked) {
+      await gamificationService.onAssessmentCompleted(
+        attempt.userId,
+        attemptId,
+        attempt.assessment.code,
+      );
+    }
 
     trackEvent({
       eventName: 'evaluation.completed',
@@ -177,6 +207,223 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
   }
 }
 
+async function upsertUnlockedResults(input: {
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+  attemptId: string;
+  userId: string;
+  percentage: number;
+  band: string;
+  evaluatedAt: Date;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  assessmentTitle: string;
+  skills: Array<{ skillId: string; weight: unknown; skill: { name: string; code: string } }>;
+}) {
+  const {
+    tx,
+    attemptId,
+    userId,
+    percentage,
+    band,
+    evaluatedAt,
+    summary,
+    strengths,
+    weaknesses,
+    assessmentTitle,
+    skills,
+  } = input;
+
+  const jrs = await tx.jobReadinessScore.upsert({
+    where: { attemptId },
+    update: {
+      overallScore: percentage,
+      band,
+      calculatedAt: evaluatedAt,
+    },
+    create: {
+      attemptId,
+      userId,
+      overallScore: percentage,
+      band,
+      calculatedAt: evaluatedAt,
+    },
+  });
+
+  for (const assessmentSkill of skills) {
+    const weight = Number(assessmentSkill.weight) || 1;
+    const skillVariance = (assessmentSkill.skill.code.length % 5) - 2;
+    const skillScore = Math.min(100, Math.max(0, Number((percentage + skillVariance).toFixed(2))));
+    await tx.jrsSkillScore.upsert({
+      where: {
+        jobReadinessScoreId_skillId: {
+          jobReadinessScoreId: jrs.id,
+          skillId: assessmentSkill.skillId,
+        },
+      },
+      update: { score: skillScore, weight },
+      create: {
+        jobReadinessScoreId: jrs.id,
+        skillId: assessmentSkill.skillId,
+        score: skillScore,
+        weight,
+      },
+    });
+  }
+
+  const existingReport = await tx.aiReport.findFirst({
+    where: { attemptId, userId },
+  });
+
+  const report =
+    existingReport ??
+    (await tx.aiReport.create({
+      data: {
+        userId,
+        attemptId,
+        status: 'READY',
+        title: `${assessmentTitle} Report`,
+        provider: 'hirefast-stub',
+        model: 'deterministic-v1',
+        summary,
+        generatedAt: evaluatedAt,
+      },
+    }));
+
+  if (existingReport) {
+    await tx.aiReport.update({
+      where: { id: existingReport.id },
+      data: {
+        status: 'READY',
+        summary,
+        generatedAt: evaluatedAt,
+        errorMessage: null,
+      },
+    });
+    await tx.aiReportSection.deleteMany({ where: { reportId: existingReport.id } });
+  }
+
+  const sections = [
+    {
+      sectionKey: 'summary',
+      title: 'Summary',
+      content: summary,
+      sortOrder: 1,
+    },
+    {
+      sectionKey: 'strengths',
+      title: 'Strengths',
+      content: strengths.map((item) => `• ${item}`).join('\n'),
+      sortOrder: 2,
+    },
+    {
+      sectionKey: 'weaknesses',
+      title: 'Weaknesses',
+      content: weaknesses.map((item) => `• ${item}`).join('\n'),
+      sortOrder: 3,
+    },
+    {
+      sectionKey: 'improvement',
+      title: 'Improvement Areas',
+      content: weaknesses.map((item) => `• Practice: ${item}`).join('\n'),
+      sortOrder: 4,
+    },
+    {
+      sectionKey: 'recommendations',
+      title: 'Personalized Recommendations',
+      content: [
+        '• Revisit unclear prompts and rewrite them with a clear ask and deadline.',
+        '• Practice active listening summaries before proposing solutions.',
+        '• Keep workplace messages concise — one purpose per message.',
+      ].join('\n'),
+      sortOrder: 5,
+    },
+  ];
+
+  await tx.aiReportSection.createMany({
+    data: sections.map((section) => ({
+      reportId: report.id,
+      ...section,
+    })),
+  });
+
+  // Freemium improvement tips (basic recommendations). Premium learning modules stay gated elsewhere.
+  await tx.learningRecommendation.deleteMany({
+    where: { userId, source: 'assessment_evaluation', deletedAt: null },
+  });
+
+  const recommendationSkills = skills.slice(0, 3);
+  for (const [index, assessmentSkill] of recommendationSkills.entries()) {
+    await tx.learningRecommendation.create({
+      data: {
+        userId,
+        skillId: assessmentSkill.skillId,
+        title: `Improve ${assessmentSkill.skill.name}`,
+        description: `Based on your ${assessmentTitle} results, focus on practical drills for ${assessmentSkill.skill.name.toLowerCase()}.`,
+        priority: index + 1,
+        source: 'assessment_evaluation',
+      },
+    });
+  }
+}
+
+/**
+ * After guest unlock, materialize JRS/report/recommendations for completed attempts that lacked them.
+ */
+export async function materializeUnlockedResultsForUser(userId: string): Promise<void> {
+  const unlockedCompleted = await prisma.assessmentAttempt.findMany({
+    where: {
+      userId,
+      resultsLocked: false,
+      status: { in: ['COMPLETED', 'SUBMITTED', 'EVALUATING'] },
+      evaluation: { status: 'COMPLETED' },
+      jobReadinessScore: { is: null },
+    },
+    include: {
+      evaluation: true,
+      aiEvaluation: true,
+      assessment: {
+        include: { skills: { include: { skill: true } } },
+      },
+    },
+  });
+
+  for (const attempt of unlockedCompleted) {
+    const percentage = Number(attempt.evaluation?.percentage ?? 0);
+    const band = percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL';
+    const strengths = parseBulletList(attempt.aiEvaluation?.strengths) ?? ['Completed assessment'];
+    const weaknesses = parseBulletList(attempt.aiEvaluation?.weaknesses) ?? ['Continue practicing'];
+    const summary =
+      attempt.aiEvaluation?.summary ??
+      'Assessment evaluation completed. Review your report for details.';
+
+    await prisma.$transaction(async (tx) => {
+      await upsertUnlockedResults({
+        tx,
+        attemptId: attempt.id,
+        userId,
+        percentage,
+        band,
+        evaluatedAt: new Date(),
+        summary,
+        strengths,
+        weaknesses,
+        assessmentTitle: attempt.assessment.title,
+        skills: attempt.assessment.skills,
+      });
+    });
+
+    if (attempt.status !== 'COMPLETED') {
+      await prisma.assessmentAttempt.update({
+        where: { id: attempt.id },
+        data: { status: 'COMPLETED', completedAt: new Date() },
+      });
+    }
+
+    await gamificationService.onAssessmentCompleted(userId, attempt.id, attempt.assessment.code);
+  }
+}
+
 export function registerAssessmentWorkers(): void {
   if (registered) return;
   createWorker<AssessmentEvaluationJob, { percentage: number }>(
@@ -184,4 +431,12 @@ export function registerAssessmentWorkers(): void {
     async (job) => evaluateAttempt(job.data.attemptId),
   );
   registered = true;
+}
+
+function parseBulletList(value: string | null | undefined): string[] | null {
+  if (!value?.trim()) return null;
+  return value
+    .split('\n')
+    .map((line) => line.replace(/^•\s*/, '').trim())
+    .filter(Boolean);
 }
