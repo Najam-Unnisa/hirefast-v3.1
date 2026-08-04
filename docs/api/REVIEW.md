@@ -67,11 +67,12 @@
 
 ## Normative artifacts
 
-| Artifact         | Path                             |
-| ---------------- | -------------------------------- |
-| Architecture     | `docs/api/ARCHITECTURE.md`       |
-| Endpoint catalog | `docs/api/ENDPOINT_CATALOG.md`   |
-| Standards        | `docs/api/STANDARDS.md`          |
-| Auth matrix      | `docs/api/AUTH_MATRIX.md`        |
-| OpenAPI          | `docs/api/openapi.yaml`          |
-| TS contracts     | `packages/shared-types/src/api/` |
+| Artifact         | Path                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| Architecture     | `docs/api/ARCHITECTURE.md`                                   |
+| Endpoint catalog | `docs/api/ENDPOINT_CATALOG.md`                               |
+| Standards        | `docs/api/STANDARDS.md`                                      |
+| Auth matrix      | `docs/api/AUTH_MATRIX.md`                                    |
+| OpenAPI          | `docs/api/openapi.yaml` (design-time)                        |
+| Runtime Swagger  | `/docs` — implemented routes only (`CONTRACT_VS_RUNTIME.md`) |
+| TS contracts     | `packages/shared-types/src/api/`                             |

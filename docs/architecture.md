@@ -39,7 +39,9 @@ See:
 - `docs/api/ENDPOINT_CATALOG.md` — full endpoint catalog
 - `docs/api/STANDARDS.md` — envelopes, pagination, security, rate limits
 - `docs/api/AUTH_MATRIX.md` — authz matrix
-- `docs/api/openapi.yaml` — normative OpenAPI 3 contract (served at `/docs`)
+- `docs/api/openapi.yaml` — authoritative **design-time** OpenAPI contract (full roadmap)
+- `docs/api/CONTRACT_VS_RUNTIME.md` — design-time contract vs runtime `/docs`
+- Runtime Swagger (`/docs`) documents **implemented Express routes only**
 - `docs/api/REVIEW.md` — API architecture review
 
 ## Architecture review (gate)

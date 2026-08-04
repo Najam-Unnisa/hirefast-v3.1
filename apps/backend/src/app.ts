@@ -66,7 +66,7 @@ export function createApp(): Application {
       '/docs',
       swaggerUi.serve,
       swaggerUi.setup(swaggerSpec, {
-        customSiteTitle: 'HireFast API Docs',
+        customSiteTitle: 'HireFast API — Implemented Routes',
         swaggerOptions: {
           persistAuthorization: true,
         },

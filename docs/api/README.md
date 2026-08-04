@@ -1,14 +1,28 @@
 # HireFast API Documentation Index
 
-| Document                                     | Description                                                     |
-| -------------------------------------------- | --------------------------------------------------------------- |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)         | Phases 1–2: modules, resource map                               |
-| [ENDPOINT_CATALOG.md](./ENDPOINT_CATALOG.md) | Phases 3–12: endpoint catalog                                   |
-| [STANDARDS.md](./STANDARDS.md)               | Request/response, pagination, security, rate limits, versioning |
-| [AUTH_MATRIX.md](./AUTH_MATRIX.md)           | Authentication & authorization matrices                         |
-| [openapi.yaml](./openapi.yaml)               | Normative OpenAPI 3.0.3 specification                           |
-| [REVIEW.md](./REVIEW.md)                     | Architecture review & recommendations                           |
+HireFast keeps **design-time** and **runtime** API docs separate.  
+See **[CONTRACT_VS_RUNTIME.md](./CONTRACT_VS_RUNTIME.md)**.
 
-**Base URL:** `/api/v1`  
-**Swagger UI (runtime):** `GET /docs`  
-**Raw spec (runtime):** `GET /docs.json`
+## Design-time (target architecture contract)
+
+| Document                                     | Description                                                 |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| [openapi.yaml](./openapi.yaml)               | **Authoritative** complete OpenAPI 3.0.3 contract (roadmap) |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)         | Modules & resource map                                      |
+| [ENDPOINT_CATALOG.md](./ENDPOINT_CATALOG.md) | Full endpoint catalog                                       |
+| [STANDARDS.md](./STANDARDS.md)               | Envelopes, pagination, security, versioning                 |
+| [AUTH_MATRIX.md](./AUTH_MATRIX.md)           | Authentication & authorization matrices                     |
+| [REVIEW.md](./REVIEW.md)                     | API architecture review                                     |
+
+These describe the **target** API. Many endpoints are not implemented yet.
+
+## Runtime (implemented Express routes only)
+
+| Endpoint         | Description                                         |
+| ---------------- | --------------------------------------------------- |
+| `GET /docs`      | Swagger UI — **implemented routes only**            |
+| `GET /docs.json` | OpenAPI JSON generated from implemented route JSDoc |
+
+Runtime Swagger does **not** serve `openapi.yaml`.
+
+**Base URL:** `/api/v1` (plus root `GET /health`)

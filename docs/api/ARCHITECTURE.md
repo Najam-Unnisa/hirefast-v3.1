@@ -135,7 +135,9 @@ Admin ──► Users, Assessments, Questions, Reports, Settings, Audit, Analyti
 Frontend and backend may implement against:
 
 1. This document set
-2. `docs/api/openapi.yaml`
+2. `docs/api/openapi.yaml` (design-time architecture contract)
 3. Shared TypeScript contracts in `@hirefast/shared-types` (`api/*`)
+
+Runtime Swagger at `/docs` reflects **implemented** routes only — see `CONTRACT_VS_RUNTIME.md`.
 
 Changes to paths, envelopes, or auth requirements require a version bump or explicit deprecation (see `STANDARDS.md`).

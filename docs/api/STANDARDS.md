@@ -2,12 +2,12 @@
 
 ## Base URL & versioning
 
-| Item                             | Value                                             |
-| -------------------------------- | ------------------------------------------------- |
-| Current version                  | `v1`                                              |
-| Prefix                           | `/api/v1`                                         |
-| Health (unversioned convenience) | `GET /health` (also mirrored at `/api/v1/health`) |
-| Docs                             | `/docs` (Swagger UI), `/docs.json`                |
+| Item                             | Value                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Current version                  | `v1`                                                                                                                           |
+| Prefix                           | `/api/v1`                                                                                                                      |
+| Health (unversioned convenience) | `GET /health` (also mirrored at `/api/v1/health`)                                                                              |
+| Docs                             | Design-time: `docs/api/openapi.yaml`. Runtime: `/docs` + `/docs.json` (implemented routes only — see `CONTRACT_VS_RUNTIME.md`) |
 
 ### Versioning strategy
 
