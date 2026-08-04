@@ -1,23 +1,30 @@
 /**
- * Prisma seed — foundation only.
- * No business data is seeded in project initialization.
+ * HireFast foundational seed — platform bootstrap only.
+ * Does NOT seed candidate assessment data.
  */
 import { PrismaClient } from '@prisma/client';
+import { seedRolesAndPermissions } from './seeds/roles-permissions';
+import { seedAdminUser } from './seeds/admin-user';
+import { seedPlatformSettings } from './seeds/platform-settings';
+import { seedAssessmentTaxonomy } from './seeds/assessment-taxonomy';
+import { seedGamification } from './seeds/gamification';
+import { seedSubscriptionPlans } from './seeds/subscription-plans';
 
 const prisma = new PrismaClient();
 
 async function main(): Promise<void> {
-  await prisma.schemaMeta.upsert({
-    where: { key: 'schema_version' },
-    update: { value: '1.0.0' },
-    create: {
-      key: 'schema_version',
-      value: '1.0.0',
-    },
-  });
+  // eslint-disable-next-line no-console
+  console.info('[seed] Starting HireFast foundational seed...');
+
+  const roles = await seedRolesAndPermissions(prisma);
+  await seedAdminUser(prisma, roles.adminRoleId);
+  await seedPlatformSettings(prisma);
+  await seedAssessmentTaxonomy(prisma);
+  await seedGamification(prisma);
+  await seedSubscriptionPlans(prisma);
 
   // eslint-disable-next-line no-console
-  console.info('[seed] Schema meta initialized (foundation only).');
+  console.info('[seed] Foundational seed completed successfully.');
 }
 
 main()

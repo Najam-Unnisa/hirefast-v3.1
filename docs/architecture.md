@@ -16,12 +16,22 @@ HireFast is a modular monolith monorepo.
 
 ## Infrastructure
 
-- PostgreSQL + Prisma ORM
+- PostgreSQL + Prisma ORM (full platform schema — see `docs/database/`)
 - Redis + BullMQ
 - Cloudflare R2 (S3-compatible) storage abstraction
 - OpenAI via AI provider abstraction
 
+## Database architecture
+
+See:
+
+- `docs/database/ARCHITECTURE.md` — entity analysis, ER model, design decisions
+- `docs/database/erd.txt` — compact ERD
+- `docs/database/TABLES.md` — table catalog
+- `docs/database/INDEXES_AND_CONSTRAINTS.md` — indexing & CHECKs
+- `docs/database/REVIEW.md` — validation & future notes
+
 ## Notes
 
-This repository currently contains the **engineering foundation only**.
-Business features (auth flows, assessments, JRS, reports) are intentionally not implemented yet.
+This repository currently contains the **engineering foundation** plus the **complete database architecture**.
+Application business features (auth flows, assessments runtime, JRS calculation, reports UI) are intentionally not implemented yet.

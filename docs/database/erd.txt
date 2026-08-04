@@ -1,0 +1,56 @@
+HireFast ERD (text)
+===================
+
+AUTH / RBAC
+  roles 1──* users
+  roles *──* permissions                 [role_permissions]
+  users 1──1 user_profiles
+  users 1──* auth_identities
+
+ASSESSMENTS
+  assessment_categories 1──* assessments
+  assessments *──* skills                [assessment_skills]
+  assessments 1──* questions
+  questions 1──* question_options
+  users 1──* assessment_attempts
+  assessments 1──* assessment_attempts
+  assessment_attempts 1──* attempt_responses
+  questions 1──* attempt_responses
+  question_options 0..1──* attempt_responses
+
+EVALUATION / JRS / AI REPORTS
+  assessment_attempts 1──0..1 attempt_evaluations
+  attempt_evaluations 1──* evaluation_skill_scores
+  skills 1──* evaluation_skill_scores
+  assessment_attempts 1──0..1 ai_evaluations
+  assessment_attempts 1──0..1 job_readiness_scores
+  users 1──* job_readiness_scores
+  job_readiness_scores 1──* jrs_skill_scores
+  skills 1──* jrs_skill_scores
+  assessment_attempts 1──* ai_reports
+  users 1──* ai_reports
+  ai_reports 1──* ai_report_sections
+
+GAMIFICATION
+  levels 1──* user_gamification
+  users 1──1 user_gamification
+  users 1──* xp_transactions
+  badges 1──* user_badges
+  users 1──* user_badges
+  xp_rules (configuration)
+
+PREMIUM
+  subscription_plans 1──* plan_features
+  subscription_plans 1──* user_subscriptions
+  users 1──* user_subscriptions
+
+LEARNING / NOTIFY / FILES / ADMIN
+  users 1──* learning_recommendations
+  users 1──* notifications
+  users 1──1 notification_preferences
+  users 1──* files
+  assessment_attempts 1──* hr_reviews
+  users 1──* hr_reviews (reviewer)
+  users 1──* audit_logs (actor)
+  platform_settings (standalone)
+  analytics_events (user optional)
