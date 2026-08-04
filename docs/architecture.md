@@ -67,11 +67,12 @@ Authentication **Foundation** (JWT, middleware, Google OAuth provider, Redis ref
 
 See:
 
-- `docs/reviews/ARCHITECTURE_REVIEW_v1.md` — full critical review & scores
-- `docs/reviews/PHASE0_REMEDIATION.md` — mandatory P0 checklist
+- `docs/reviews/FINAL_ARCHITECTURE_APPROVAL.md` — **independent final sign-off**
+- `docs/reviews/ARCHITECTURE_REVIEW_v1.md` — earlier critical review & scores
+- `docs/reviews/PHASE0_REMEDIATION.md` — Phase 0 checklist
 - `docs/adr/` — Architecture Decision Records
 
-**Status:** Conditional approval for remaining Phase 0 **architecture** items (e.g. request ID / rate-limit alignment, OpenAPI ambiguity freeze). CI format+lint gates, shared UI, BullMQ foundation, auth foundation, and RBAC/subscription separation are complete.
+**Decision:** **APPROVED WITH MINOR RECOMMENDATIONS** — proceed to Phase 2 (Feature Specs) and Phase 3 (Feature Implementation).
 
 ## Notes
 
