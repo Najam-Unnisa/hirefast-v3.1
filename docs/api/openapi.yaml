@@ -5,10 +5,18 @@ info:
   description: |
     HireFast AI-powered employability assessment platform API contract (v1).
 
-    This specification is the **normative API contract**. It does not include
-    implementation. Base path: `/api/v1`.
+    This file is the **authoritative design-time / architecture OpenAPI contract**.
+    It describes the **target** API surface for HireFast. It is **not** served by
+    the running API's Swagger UI (`/docs`), which documents implemented Express
+    routes only.
 
-    Related docs: `docs/api/ARCHITECTURE.md`, `ENDPOINT_CATALOG.md`, `STANDARDS.md`, `AUTH_MATRIX.md`.
+    Implementation is incremental per the HireFast development roadmap.
+    See `docs/api/CONTRACT_VS_RUNTIME.md`.
+
+    Base path: `/api/v1`.
+
+    Related docs: `docs/api/ARCHITECTURE.md`, `ENDPOINT_CATALOG.md`, `STANDARDS.md`,
+    `AUTH_MATRIX.md`, `CONTRACT_VS_RUNTIME.md`.
   contact:
     name: HireFast Engineering
 servers:
