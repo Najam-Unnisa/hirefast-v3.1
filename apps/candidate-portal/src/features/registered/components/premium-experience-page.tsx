@@ -210,9 +210,15 @@ export function PremiumExperiencePage(): React.ReactElement {
             </>
           ) : (
             <>
-              <Button type="button" disabled={busy} onClick={() => void handleActivate()}>
-                {busy ? 'Activating…' : 'Activate Premium'}
-              </Button>
+              {!IS_PRODUCTION ? (
+                <Button type="button" disabled={busy} onClick={() => void handleActivate()}>
+                  {busy ? 'Activating…' : 'Activate Premium (dev)'}
+                </Button>
+              ) : (
+                <Button type="button" disabled>
+                  Billing checkout coming soon
+                </Button>
+              )}
               <Button asChild variant="outline">
                 <Link href="/dashboard">Back to dashboard</Link>
               </Button>
@@ -232,8 +238,8 @@ export function PremiumExperiencePage(): React.ReactElement {
         ) : null}
 
         <p className="text-xs text-[var(--hf-muted)]">
-          External billing checkout can replace activation later. Subscription status remains the
-          source of truth for Premium access.
+          Premium access is controlled exclusively by the subscription system. Self-serve activation
+          is available in non-production only until billing checkout ships.
         </p>
       </motion.div>
     </section>

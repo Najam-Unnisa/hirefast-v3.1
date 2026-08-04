@@ -196,12 +196,14 @@ export class DashboardService {
         status: attempt.status,
         at: attempt.updatedAt,
       })),
-      progressTrend: jrsHistory.map((point) => ({
-        overallScore: Number(point.overallScore),
-        band: point.band,
-        calculatedAt: point.calculatedAt,
-        assessmentTitle: point.attempt.assessment.title,
-      })),
+      progressTrend: isPremium
+        ? jrsHistory.map((point) => ({
+            overallScore: Number(point.overallScore),
+            band: point.band,
+            calculatedAt: point.calculatedAt,
+            assessmentTitle: point.attempt.assessment.title,
+          }))
+        : [],
       subscription: {
         planCode: subscription?.planCode ?? 'FREE',
         status: subscription?.status ?? 'NONE',

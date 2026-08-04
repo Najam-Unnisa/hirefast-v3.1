@@ -91,10 +91,14 @@ export class SubscriptionsService {
   }
 
   /**
-   * Activates Premium for the current user.
-   * Billing provider checkout is deferred; this fulfills the entitled Premium state.
+   * Activates Premium for the current user (non-production only).
+   * Production must use billing checkout / webhooks — never self-serve entitlement grants.
    */
   async activatePremium(userId: string) {
+    if (env.isProduction) {
+      throw new NotFoundError('Route not found.');
+    }
+
     const premiumPlan = await prisma.subscriptionPlan.findUnique({
       where: { code: PLAN_CODES.PREMIUM },
       include: { features: true },

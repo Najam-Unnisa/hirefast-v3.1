@@ -122,7 +122,7 @@ describe('Premium subscription entitlements', () => {
     });
   });
 
-  it('allows registered users to activate Premium', async () => {
+  it('allows registered users to activate Premium in non-production', async () => {
     const response = await request(app)
       .post('/api/v1/subscriptions/me/activate-premium')
       .set('Authorization', `Bearer ${tokens.accessToken}`);

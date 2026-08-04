@@ -28,12 +28,6 @@ subscriptionsRouter.post(
   (req, res, next) => subscriptionsController.validateFeature(req, res, next),
 );
 subscriptionsRouter.post(
-  '/me/activate-premium',
-  authenticate,
-  authorize(ROLES.USER, ROLES.ADMIN),
-  (req, res, next) => subscriptionsController.activatePremium(req, res, next),
-);
-subscriptionsRouter.post(
   '/me/downgrade',
   authenticate,
   authorize(ROLES.USER, ROLES.ADMIN),
@@ -41,6 +35,13 @@ subscriptionsRouter.post(
 );
 
 if (!env.isProduction) {
+  // Billing checkout is deferred — local/dev only may simulate Premium entitlement.
+  subscriptionsRouter.post(
+    '/me/activate-premium',
+    authenticate,
+    authorize(ROLES.USER, ROLES.ADMIN),
+    (req, res, next) => subscriptionsController.activatePremium(req, res, next),
+  );
   subscriptionsRouter.post(
     '/dev/expire-premium',
     authenticate,
