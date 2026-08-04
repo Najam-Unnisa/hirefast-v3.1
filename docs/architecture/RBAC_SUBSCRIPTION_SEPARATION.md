@@ -43,9 +43,9 @@ Identity, authorization, and commercial access are now **independent** concerns 
 
 1. Deploy migration `20260804090000_rbac_subscription_separation`
 2. Run foundational seed (re-upserts roles/plans; cleans legacy roles if any remain)
-3. Invalidate existing JWTs that may still carry `FREEMIUM`/`PREMIUM` as `role` (force re-login when Auth ships)
+3. Invalidate existing JWTs that may still carry `FREEMIUM`/`PREMIUM` as `role` (force re-login when Auth **Feature Implementation** ships)
 4. Wire feature routes as: `authenticate` → `authorize` → `requirePlan`/`requireFeature`
 
 ## Out of scope
 
-Auth module implementation, assessment features, billing provider integration — Phase 0/2 items remain separate.
+Authentication **Feature Implementation** (login/session HTTP APIs), assessment features, billing provider integration — deferred under Architecture-First. Authentication **Foundation** is complete; see `AUTHENTICATION_FOUNDATION.md`.

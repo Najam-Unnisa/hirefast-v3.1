@@ -5,15 +5,16 @@ See **[CONTRACT_VS_RUNTIME.md](./CONTRACT_VS_RUNTIME.md)**.
 
 ## Design-time (target architecture contract)
 
-| Document                                                                       | Description                                                 |
-| ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
-| [openapi.yaml](./openapi.yaml)                                                 | **Authoritative** complete OpenAPI 3.0.3 contract (roadmap) |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)                                           | Modules & resource map                                      |
-| [ENDPOINT_CATALOG.md](./ENDPOINT_CATALOG.md)                                   | Full endpoint catalog                                       |
-| [STANDARDS.md](./STANDARDS.md)                                                 | Envelopes, pagination, security, versioning                 |
-| [AUTH_MATRIX.md](./AUTH_MATRIX.md)                                             | Authentication & authorization matrices                     |
-| [../architecture/AUTHORIZATION_FLOW.md](../architecture/AUTHORIZATION_FLOW.md) | Identity vs RBAC vs subscription flow                       |
-| [REVIEW.md](./REVIEW.md)                                                       | API architecture review                                     |
+| Document                                                                                     | Description                                                 |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [openapi.yaml](./openapi.yaml)                                                               | **Authoritative** complete OpenAPI 3.0.3 contract (roadmap) |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                                                         | Modules & resource map                                      |
+| [ENDPOINT_CATALOG.md](./ENDPOINT_CATALOG.md)                                                 | Full endpoint catalog                                       |
+| [STANDARDS.md](./STANDARDS.md)                                                               | Envelopes, pagination, security, versioning                 |
+| [AUTH_MATRIX.md](./AUTH_MATRIX.md)                                                           | Authentication & authorization matrices                     |
+| [../architecture/AUTHORIZATION_FLOW.md](../architecture/AUTHORIZATION_FLOW.md)               | Identity vs RBAC vs subscription flow                       |
+| [../architecture/AUTHENTICATION_FOUNDATION.md](../architecture/AUTHENTICATION_FOUNDATION.md) | Auth foundation vs feature implementation                   |
+| [REVIEW.md](./REVIEW.md)                                                                     | API architecture review                                     |
 
 These describe the **target** API. Many endpoints are not implemented yet.
 

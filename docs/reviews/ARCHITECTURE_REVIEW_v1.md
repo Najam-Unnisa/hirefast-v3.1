@@ -16,30 +16,30 @@ However, this review **does not grant unconditional approval** for unconstrained
 
 Critical gaps remain:
 
-1. **Contract–implementation drift** — OpenAPI documents ~81 paths; backend mounts **only** `/health`.
+1. **Contract–implementation drift** — OpenAPI documents ~81 paths; backend mounts **only** `/health` (design-time contract vs runtime — expected under Architecture-First until Feature Implementation).
 2. **~~RBAC model is incoherent at the identity boundary~~** — **Resolved** (roles `ADMIN`/`USER`/`GUEST`; commercial via `FREE`/`PREMIUM` plans). See `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`.
-3. **Auth is incomplete relative to its own contract** — JWT helpers exist; Redis-backed refresh/logout, Google callback, and wired middleware do not.
-4. **Frontend is duplicated scaffolding** — candidate and admin portals share ~17 identical UI files with no `shared-ui` package; auth provider is a stub.
+3. **~~Auth is incomplete~~** — **Clarified:** Authentication **Foundation** is implemented (JWT, middleware, Google OAuth config/provider, Redis, refresh-token store). Auth **HTTP APIs** (login/refresh/logout/session) are intentionally deferred to **Feature Implementation** — not an architectural defect. See `docs/architecture/AUTHENTICATION_FOUNDATION.md`.
+4. **Frontend is duplicated scaffolding** — candidate and admin portals share ~17 identical UI files with no `shared-ui` package; auth provider is a stub (FE feature work).
 5. **Operational readiness is shallow** — no monitoring/APM, no backup/DR runbooks, no e2e, CI omits lint/format, workers are empty shells.
-6. **Security posture is “scaffolded, not enforced”** — Helmet/CORS/rate-limit exist globally; IDOR, idempotency, request IDs, permission checks, and scoped rate limits do not.
+6. **Security posture is “scaffolded, not enforced”** — Helmet/CORS/rate-limit exist globally; IDOR, idempotency, request IDs, permission checks, and scoped rate limits do not (enforcement lands with feature routes).
 
-**Verdict:** Architecture is a **strong blueprint**. Runtime is **not yet production-ready**. Approve only **conditionally**, after a mandatory **Phase 0 remediation** (Section 19–20).
+**Verdict:** Architecture is a **strong blueprint**. Authentication Foundation is in place. Domain Feature Implementation (including auth APIs) remains ahead. Approve **conditionally** for remaining Phase 0 architecture items (Section 19–20) — do **not** treat deferred auth APIs as a foundation failure.
 
 ---
 
 ## 2–10. Scores (out of 10)
 
-| #   | Area                     |   Score | Rationale (compressed)                                                                                                                 |
-| --- | ------------------------ | ------: | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 2   | **Overall Architecture** | **6.5** | Sound modular-monolith intent; empty module folders; coupling via role/subscription conflation; portals duplicated                     |
-| 3   | **Database**             | **7.5** | Solid 3NF, FKs, indexes, JRS≠AI; weak points: dual commercial identity, missing active-subscription uniqueness, soft-delete index hole |
-| 4   | **API**                  | **7.5** | Comprehensive, consistent envelope; minor duplication (`/auth/me` vs `/users/me`); billing deferred; excellent as a contract           |
-| 5   | **Security**             | **5.0** | Middleware & headers present but unwired; refresh tokens not stored; permission tables unused; weak example secrets                    |
-| 6   | **Performance**          | **5.5** | No caching strategy, no CDN plan, empty queues, dashboard aggregate risk only documented                                               |
-| 7   | **Scalability**          | **6.5** | Schema/API can grow; no org multi-tenancy; worker horizontal scale undesigned; analytics not partition-ready                           |
-| 8   | **Maintainability**      | **5.5** | Docs excellent; UI duplication and contract/code drift will create immediate debt once features start                                  |
-| 9   | **Developer Experience** | **6.5** | Monorepo, seeds, Docker, Swagger YAML — good; CI thin; no shared UI; no ADR set until this report                                      |
-| 10  | **Product Experience**   | **6.0** | Product principles clear; guest lock designed; actual UX flows not built; disabled CTAs only                                           |
+| #   | Area                     |   Score | Rationale (compressed)                                                                                                                           |
+| --- | ------------------------ | ------: | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2   | **Overall Architecture** | **6.5** | Sound modular-monolith intent; empty module folders; coupling via role/subscription conflation; portals duplicated                               |
+| 3   | **Database**             | **7.5** | Solid 3NF, FKs, indexes, JRS≠AI; weak points: dual commercial identity, missing active-subscription uniqueness, soft-delete index hole           |
+| 4   | **API**                  | **7.5** | Comprehensive, consistent envelope; minor duplication (`/auth/me` vs `/users/me`); billing deferred; excellent as a contract                     |
+| 5   | **Security**             | **6.0** | Auth foundation (JWT/middleware/OAuth provider/Redis refresh store) ready; enforcement awaits feature routes; example secrets still placeholders |
+| 6   | **Performance**          | **5.5** | No caching strategy, no CDN plan, empty queues, dashboard aggregate risk only documented                                                         |
+| 7   | **Scalability**          | **6.5** | Schema/API can grow; no org multi-tenancy; worker horizontal scale undesigned; analytics not partition-ready                                     |
+| 8   | **Maintainability**      | **5.5** | Docs excellent; UI duplication and contract/code drift will create immediate debt once features start                                            |
+| 9   | **Developer Experience** | **6.5** | Monorepo, seeds, Docker, Swagger YAML — good; CI thin; no shared UI; no ADR set until this report                                                |
+| 10  | **Product Experience**   | **6.0** | Product principles clear; guest lock designed; actual UX flows not built; disabled CTAs only                                                     |
 
 **Weighted readiness (approx.): 6.2 / 10** — **not** “ship features freely.”
 
@@ -81,9 +81,9 @@ Critical gaps remain:
 
 ### Security
 
-- Auth middleware **never mounted** on business routes (none exist).
-- `optionalAuthenticate` swallows verification errors — can mask token bugs.
-- Refresh/logout contract assumes Redis; **no session store implementation**.
+- Auth **foundation** middleware exists; it is not mounted on business routes because those modules are deferred (Architecture-First).
+- `optionalAuthenticate` swallows verification errors — can mask token bugs when feature routes mount it.
+- Refresh-token **store** exists (`RefreshTokenStore`); refresh/logout **HTTP APIs** are Feature Implementation.
 - Global rate limit default (100/15m) ≠ documented recommendation (300 + per-route).
 - Error code `RATE_LIMIT` vs catalog `RATE_LIMITED`.
 - No `X-Request-Id` generation despite CORS allow-list.
@@ -92,7 +92,7 @@ Critical gaps remain:
 
 ### Frontend
 
-- Auth context is local state only — no token persistence, no refresh, no route guards.
+- Auth context is local state only — FE session UX is Feature Implementation (not a backend foundation gap).
 - No authenticated layouts, no loading/error route patterns beyond UI primitives.
 - Accessibility: primitives mostly OK; no product flows to validate.
 
@@ -113,58 +113,55 @@ Critical gaps remain:
 
 ## 13. Risks
 
-| Risk                         | Severity | Why it hurts                                                                             |
-| ---------------------------- | -------- | ---------------------------------------------------------------------------------------- |
-| **Contract drift**           | Critical | FE builds against OpenAPI while BE lacks routes → blocked sprints or ad-hoc APIs         |
-| **Premium = role**           | High     | Entitlement bugs, refund/cancel edge cases, audit confusion                              |
-| **Auth half-built**          | Critical | First feature wave will invent session storage inconsistently                            |
-| **Empty workers**            | High     | AI/report/email will land in HTTP handlers “just this once”                              |
-| **UI fork**                  | High     | Design system divergence between portals                                                 |
-| **No observability**         | High     | Cannot operate AI cost, queue lag, or auth failures in prod                              |
-| **IDOR if rushed**           | Critical | Attempt/report/file IDs are guessable UUIDs still need ownership checks — easy to forget |
-| **Permission table theater** | Medium   | Maintained seed data that auth never reads → false sense of RBAC                         |
-| **Analytics growth**         | Medium   | Unpartitioned `analytics_events` / `audit_logs` will hurt                                |
+| Risk                           | Severity | Why it hurts                                                                             |
+| ------------------------------ | -------- | ---------------------------------------------------------------------------------------- |
+| **Contract drift**             | Critical | FE builds against OpenAPI while BE lacks routes → blocked sprints or ad-hoc APIs         |
+| **~~Premium = role~~**         | —        | **Resolved** — commercial access via subscription only                                   |
+| **Auth Feature APIs deferred** | Info     | Expected under Architecture-First; foundation ready — see `AUTHENTICATION_FOUNDATION.md` |
+| **Empty workers**              | High     | AI/report/email will land in HTTP handlers “just this once”                              |
+| **UI fork**                    | High     | Design system divergence between portals                                                 |
+| **No observability**           | High     | Cannot operate AI cost, queue lag, or auth failures in prod                              |
+| **IDOR if rushed**             | Critical | Attempt/report/file IDs are guessable UUIDs still need ownership checks — easy to forget |
+| **Permission table theater**   | Medium   | Maintained seed data that auth never reads → false sense of RBAC                         |
+| **Analytics growth**           | Medium   | Unpartitioned `analytics_events` / `audit_logs` will hurt                                |
 
 ---
 
 ## 14. Missing Components
 
-| Area           | Missing                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Auth           | Google callback service, refresh store (Redis), logout revoke, route wiring, permission resolution endpoint backed by DB |
-| Domain modules | users, assessments, attempts, evaluation, reports, dashboard, gamification, notifications, subscriptions, admin, HR      |
-| Frontend       | Shared UI package, auth session store, protected routes, real pages, form patterns, a11y flows                           |
-| AI             | Prompt templates versioning, job processors, retry/DLQ policy, token/cost accounting, provider failover                  |
-| Storage        | Presigned upload API, MIME/size enforcement middleware, malware scan hook                                                |
-| Platform       | Idempotency middleware, request ID middleware, structured logger (pino), feature flags                                   |
-| Ops            | APM/metrics, log aggregation, DB backups, migrate runbook, staging env, secrets manager                                  |
-| Quality        | Contract tests, authz tests, e2e smoke, load test plan for submit/evaluate                                               |
-| Product        | Billing provider integration contract, org/recruiter ADR (even if deferred)                                              |
+| Area              | Missing                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Auth foundation   | ✅ JWT, middleware, Google provider, Redis refresh store — `docs/architecture/AUTHENTICATION_FOUNDATION.md`         |
+| Auth feature APIs | ⏳ Deferred — login/refresh/logout/session HTTP (Feature Implementation phase)                                      |
+| Domain modules    | users, assessments, attempts, evaluation, reports, dashboard, gamification, notifications, subscriptions, admin, HR |
+| Frontend          | Shared UI package, auth session UX, protected routes, real pages, form patterns, a11y flows                         |
+| AI                | Prompt templates versioning, job processors, retry/DLQ policy, token/cost accounting, provider failover             |
+| Storage           | Presigned upload API, MIME/size enforcement middleware, malware scan hook                                           |
+| Platform          | Idempotency middleware, request ID middleware, structured logger (pino), feature flags                              |
+| Ops               | APM/metrics, log aggregation, DB backups, migrate runbook, staging env, secrets manager                             |
+| Quality           | Contract tests, authz tests, e2e smoke, load test plan for submit/evaluate                                          |
+| Product           | Billing provider integration contract, org/recruiter ADR (even if deferred)                                         |
 
 ---
 
 ## 15. Recommended Refactoring (before feature flood)
 
-### P0 — Blocking (must complete before domain features)
+### P0 — Blocking (architecture remediation)
 
-1. **Resolve RBAC vs billing**
-   - Prefer: roles = `ADMIN | USER | GUEST` (or keep Guest); entitlements from `user_subscriptions` + `plan_features`.
-   - Or: keep PREMIUM role but **remove identical permission sets** and document a single entitlement resolver used by every gate.
-   - Add DB partial unique: one `ACTIVE`/`TRIALING` subscription per user.
-
-2. **Implement Auth vertical slice (minimal but real)**  
-   Google start/callback → issue tokens → Redis refresh → `authenticate`/`authorize` on `/auth/me` → logout. No assessments yet.
-
+1. **~~Resolve RBAC vs billing~~** — **Done** (ADR-010 Accepted).
+2. **Authentication Foundation** — **Done** (JWT, middleware, Google provider, Redis refresh store). Auth **Feature Implementation** (HTTP APIs) is intentionally deferred — not a P0 architecture defect. See `AUTHENTICATION_FOUNDATION.md`.
 3. **Extract `packages/shared-ui`** (or `packages/ui`) and delete portal duplicates.
-
 4. **Standardize cross-cutting middleware**  
    Request ID, consistent 429 code (`RATE_LIMITED`), align rate-limit defaults with STANDARDS, idempotency for future submit.
-
 5. **Worker bootstrap**  
    At least one no-op or heartbeat worker + DLQ convention so AI jobs never default to request-thread.
-
 6. **Freeze API ambiguities**  
    Single status for report create (`200` + `GENERATING`); document billing as out-of-band until `/billing` exists.
+
+### Feature Implementation (first auth-dependent modules)
+
+- Auth vertical slice using foundation: Google start/callback → issue tokens → `RefreshTokenStore` → `authenticate`/`authorize` on `/auth/me` → logout.
+- Mount auth middleware on each protected feature route as that module ships.
 
 ### P1 — Strongly recommended in first month of features
 
@@ -251,7 +248,7 @@ Critical gaps remain:
 | ADR-002 | pnpm monorepo: 2 Next apps + backend + shared packages | **Accepted** | Missing shared-ui package                                           |
 | ADR-003 | PostgreSQL + Prisma; UUID PKs; snake_case DB maps      | **Accepted** | —                                                                   |
 | ADR-004 | REST `/api/v1` + standard envelope                     | **Accepted** | —                                                                   |
-| ADR-005 | Google OAuth only (no password table)                  | **Accepted** | Must finish Redis session story                                     |
+| ADR-005 | Google OAuth only (no password table)                  | **Accepted** | Foundation ready; Feature APIs deferred (Architecture-First)        |
 | ADR-006 | JRS/backend eval ≠ AI reports                          | **Accepted** | Non-negotiable product rule — keep                                  |
 | ADR-007 | BullMQ for AI/report/email/notifications               | **Accepted** | Workers must exist before those features                            |
 | ADR-008 | AI via provider interface (OpenAI first)               | **Accepted** | Needs prompt/job layer                                              |
@@ -265,25 +262,26 @@ Critical gaps remain:
 
 ## 19. Production Readiness Checklist
 
-| Item                                   | Ready?                                           |
-| -------------------------------------- | ------------------------------------------------ |
-| Stack frozen & documented              | ✅                                               |
-| Monorepo builds                        | ✅                                               |
-| DB schema migrated + seeded            | ✅                                               |
-| API contract published                 | ✅                                               |
-| Health checks (API/DB/Redis)           | ✅                                               |
-| Auth end-to-end                        | ❌                                               |
-| RBAC entitlements coherent             | ✅ (identity roles; commercial via subscription) |
-| Domain modules implemented             | ❌                                               |
-| Workers processing jobs                | ❌                                               |
-| Observability                          | ❌                                               |
-| Backups / DR                           | ❌                                               |
-| Secrets management (non-local)         | ❌                                               |
-| e2e / contract tests                   | ❌                                               |
-| CI lint + security gates               | ❌                                               |
-| Shared UI / DX for two portals         | ❌                                               |
-| Rate-limit & idempotency per STANDARDS | ❌                                               |
-| Staging environment                    | ❌                                               |
+| Item                                                     | Ready?                                           |
+| -------------------------------------------------------- | ------------------------------------------------ |
+| Stack frozen & documented                                | ✅                                               |
+| Monorepo builds                                          | ✅                                               |
+| DB schema migrated + seeded                              | ✅                                               |
+| API contract published                                   | ✅                                               |
+| Health checks (API/DB/Redis)                             | ✅                                               |
+| Auth foundation (JWT / middleware / OAuth / Redis store) | ✅                                               |
+| Auth feature APIs (login / refresh / logout / session)   | ⏳ Feature Implementation                        |
+| RBAC entitlements coherent                               | ✅ (identity roles; commercial via subscription) |
+| Domain modules implemented                               | ❌                                               |
+| Workers processing jobs                                  | ❌                                               |
+| Observability                                            | ❌                                               |
+| Backups / DR                                             | ❌                                               |
+| Secrets management (non-local)                           | ❌                                               |
+| e2e / contract tests                                     | ❌                                               |
+| CI lint + security gates                                 | ❌                                               |
+| Shared UI / DX for two portals                           | ❌                                               |
+| Rate-limit & idempotency per STANDARDS                   | ❌                                               |
+| Staging environment                                      | ❌                                               |
 
 **Production traffic:** **NO**  
 **Feature development:** **ONLY after P0**
@@ -292,14 +290,14 @@ Critical gaps remain:
 
 ## 20. Final Approval Recommendation
 
-### Decision: **CONDITIONAL APPROVAL**
+### Decision: **CONDITIONAL APPROVAL** (architecture)
 
-The HireFast architecture is **approved as a blueprint** and **not approved as a finished platform foundation for unconstrained feature delivery**.
+The HireFast architecture is **approved as a foundation blueprint**. Authentication **Foundation** is complete. Authentication **Feature Implementation** (HTTP APIs) is intentionally deferred under Architecture-First methodology and is **not** a foundation defect.
 
-### You may proceed to feature development **only if** the following P0 gate is completed first:
+### Remaining Phase 0 architecture gate (non-auth):
 
-1. Fix **role vs subscription / entitlement** model (ADR-010 revision).
-2. Deliver a **real Auth vertical slice** (Google + JWT + Redis refresh + wired middleware).
+1. ~~Fix **role vs subscription / entitlement** model~~ — **Done** (ADR-010).
+2. ~~Authentication Foundation~~ — **Done** (see `AUTHENTICATION_FOUNDATION.md`). Auth HTTP APIs → Feature Implementation.
 3. Extract **shared UI** and stop duplicating portals.
 4. Establish **worker/process conventions** for BullMQ (even with a noop consumer).
 5. Add **request ID + consistent error/rate-limit codes**; freeze OpenAPI ambiguities (report status codes).
@@ -307,34 +305,36 @@ The HireFast architecture is **approved as a blueprint** and **not approved as a
 
 ### Do **not** approve if the team intends to:
 
-- Implement assessments/AI/reports **before** auth sessions and entitlement resolution exist.
+- Implement assessments/AI/reports **without** using the auth foundation (JWT middleware + subscription gates) when those routes ship.
+- Invent parallel session/OAuth helpers instead of `providers/auth` + `RefreshTokenStore`.
 - Copy portal UI per feature instead of extracting shared-ui.
 - Run evaluation/AI **inside HTTP handlers** because workers “aren’t ready.”
 - Treat OpenAPI as aspirational while shipping incompatible routes.
 
 ### Architect’s closing challenge
 
-Documentation quality is currently **ahead of** engineering substance. That is preferable to the reverse — but it creates a false sense of readiness. The expensive failures for HireFast will not be missing tables; they will be **entitlement bugs, IDOR on attempts/reports, AI cost blowups on synchronous paths, and twin frontend drift**.
+Documentation quality is currently **ahead of** feature substance — **by design** under Architecture-First. The expensive failures for HireFast will not be missing auth foundation; they will be **entitlement bugs, IDOR on attempts/reports, AI cost blowups on synchronous paths, and twin frontend drift** if Feature Implementation ignores the foundation.
 
-Address those before celebrating the schema.
+Consume the foundation when features begin; do not rebuild it.
 
 ---
 
 ## Appendix A — Evidence base (sampled)
 
-| Evidence                        | Path                                                      |
-| ------------------------------- | --------------------------------------------------------- |
-| Only health module routed       | `apps/backend/src/routes/index.ts`                        |
-| Auth middleware unwired         | `apps/backend/src/middlewares/auth.middleware.ts`         |
-| Empty workers                   | `apps/backend/src/jobs/worker.ts`                         |
-| 38 Prisma models                | `prisma/schema.prisma`                                    |
-| OpenAPI ~81 paths               | `docs/api/openapi.yaml`                                   |
-| Identical portal UI             | `apps/*/src/components/ui/*`                              |
-| Auth stub                       | `apps/*/src/components/providers/auth-provider.tsx`       |
-| CI scope                        | `.github/workflows/ci.yml`                                |
-| Identity roles ADMIN/USER/GUEST | `apps/backend/prisma/seeds/roles-permissions.ts`          |
-| Subscription plans FREE/PREMIUM | `apps/backend/prisma/seeds/subscription-plans.ts`         |
-| Subscription middleware         | `apps/backend/src/middlewares/subscription.middleware.ts` |
+| Evidence                                                      | Path                                                                             |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Only health module routed                                     | `apps/backend/src/routes/index.ts`                                               |
+| Auth middleware (foundation; mount at Feature Implementation) | `apps/backend/src/middlewares/auth.middleware.ts`                                |
+| Auth provider + refresh store (foundation)                    | `apps/backend/src/providers/auth/`, `infrastructure/auth/refresh-token.store.ts` |
+| Empty workers                                                 | `apps/backend/src/jobs/worker.ts`                                                |
+| 38 Prisma models                                              | `prisma/schema.prisma`                                                           |
+| OpenAPI ~81 paths                                             | `docs/api/openapi.yaml`                                                          |
+| Identical portal UI                                           | `apps/*/src/components/ui/*`                                                     |
+| FE auth stub (feature phase)                                  | `apps/*/src/components/providers/auth-provider.tsx`                              |
+| CI scope                                                      | `.github/workflows/ci.yml`                                                       |
+| Identity roles ADMIN/USER/GUEST                               | `apps/backend/prisma/seeds/roles-permissions.ts`                                 |
+| Subscription plans FREE/PREMIUM                               | `apps/backend/prisma/seeds/subscription-plans.ts`                                |
+| Subscription middleware                                       | `apps/backend/src/middlewares/subscription.middleware.ts`                        |
 
 ---
 

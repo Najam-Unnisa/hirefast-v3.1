@@ -2,7 +2,12 @@
 
 AI-powered employability assessment platform.
 
-This repository currently contains the **project foundation** (scaffolding only). Business features such as authentication flows, assessments, Job Readiness Score, reports, and dashboards are intentionally not implemented yet.
+This repository currently contains the **project foundation** (Architecture-First).
+
+- **Authentication Foundation** is implemented (JWT, auth/RBAC middleware, Google OAuth provider, Redis, refresh-token store).
+- **Authentication Feature Implementation** (login/refresh/logout/session APIs and FE session UX) and other business features (assessments, Job Readiness Score, reports, dashboards) are intentionally deferred to the Feature Implementation phase.
+
+See `docs/architecture/AUTHENTICATION_FOUNDATION.md`.
 
 ## Monorepo Structure
 
@@ -27,7 +32,7 @@ docs/                 # Architecture notes
 | Frontend        | Next.js 15, React 19, TypeScript, Tailwind CSS v4, shadcn/ui, TanStack Query, Zustand, RHF + Zod, Framer Motion |
 | Backend         | Node.js, Express.js, TypeScript                                                                                 |
 | Database        | PostgreSQL + Prisma ORM                                                                                         |
-| Auth foundation | Google OAuth config, JWT utilities, RBAC middleware                                                             |
+| Auth foundation | Google OAuth provider, JWT utilities, RBAC middleware, Redis refresh-token store                                |
 | Jobs            | Redis + BullMQ                                                                                                  |
 | AI              | Provider abstraction (OpenAI implementation)                                                                    |
 | Storage         | Cloudflare R2 (S3-compatible) abstraction                                                                       |

@@ -1,6 +1,7 @@
 /**
- * Google OAuth configuration helpers.
- * Login flows are intentionally not implemented in project initialization.
+ * Google OAuth configuration helpers — Authentication Foundation.
+ * Authorization URL / token / userinfo endpoints are configured here.
+ * Login, callback, and session HTTP APIs are deferred to Feature Implementation.
  */
 import { env } from '../config/env';
 
