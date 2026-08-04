@@ -42,4 +42,6 @@ Methodology: **Architecture-First**
 
 ## Exit criteria
 
-Foundation approval recognizes completed Architecture-First gates above. Deferred ops and feature work remain scheduled later — see `docs/engineering/OPERATIONS_ROADMAP.md`.
+**Final sign-off:** `docs/reviews/FINAL_ARCHITECTURE_APPROVAL.md` — **APPROVED WITH MINOR RECOMMENDATIONS**.
+
+Foundation approval recognizes completed Architecture-First gates above. Remaining unchecked Phase-0 items are **minor recommendations** (not architecture blockers). Deferred ops and feature work remain scheduled later — see `docs/engineering/OPERATIONS_ROADMAP.md`.
