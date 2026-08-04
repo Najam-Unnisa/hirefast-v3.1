@@ -13,7 +13,7 @@ export class AuthController {
     }
   }
 
-  async googleCallback(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async googleCallback(req: Request, res: Response, _next: NextFunction): Promise<void> {
     try {
       const tokens = await authService.handleGoogleCallback(
         typeof req.query.code === 'string' ? req.query.code : undefined,
@@ -26,7 +26,12 @@ export class AuthController {
       });
       res.redirect(`${env.appUrl}/auth/callback?${query.toString()}`);
     } catch (error) {
-      next(error);
+      const message = error instanceof Error ? error.message : 'Google authentication failed.';
+      const query = new URLSearchParams({
+        error: 'google_auth_failed',
+        message,
+      });
+      res.redirect(`${env.appUrl}/auth/callback?${query.toString()}`);
     }
   }
 

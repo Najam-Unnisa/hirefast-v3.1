@@ -3,6 +3,7 @@ import type { UserRoleValue } from '@hirefast/shared-types';
 import { prisma } from '../../../config/database';
 import { ROLES } from '../../../constants/roles';
 import { getQueue, QUEUE_NAMES } from '../../../jobs';
+import { trackEvent } from '../../../services/analytics.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../../utils/errors';
 
 const GUEST_ASSESSMENT_CODE = 'GENERAL_COMMUNICATION';
@@ -72,6 +73,11 @@ export class AssessmentsService {
       where: { userId, assessmentId, status: 'IN_PROGRESS' },
     });
     if (inProgress) {
+      trackEvent({
+        eventName: 'assessment.resumed',
+        userId,
+        properties: { assessmentId, attemptId: inProgress.id },
+      });
       return inProgress;
     }
 
@@ -98,7 +104,7 @@ export class AssessmentsService {
       _max: { attemptNumber: true },
     });
 
-    return prisma.assessmentAttempt.create({
+    const attempt = await prisma.assessmentAttempt.create({
       data: {
         userId,
         assessmentId,
@@ -106,10 +112,29 @@ export class AssessmentsService {
         resultsLocked: role === ROLES.GUEST,
       },
     });
+
+    trackEvent({
+      eventName: 'assessment.started',
+      userId,
+      properties: { assessmentId, attemptId: attempt.id, role },
+    });
+    return attempt;
   }
 
   async getAttempt(attemptId: string, userId: string) {
-    return this.requireOwnedAttempt(attemptId, userId);
+    const attempt = await this.requireOwnedAttempt(attemptId, userId);
+    const responses = await prisma.attemptResponse.findMany({
+      where: { attemptId },
+      select: {
+        id: true,
+        questionId: true,
+        selectedOptionId: true,
+        textAnswer: true,
+        numericAnswer: true,
+        answeredAt: true,
+      },
+    });
+    return { ...attempt, responses };
   }
 
   async getQuestions(attemptId: string, userId: string) {
@@ -183,7 +208,7 @@ export class AssessmentsService {
       answeredAt: new Date(),
     };
 
-    return prisma.attemptResponse.upsert({
+    const response = await prisma.attemptResponse.upsert({
       where: {
         attemptId_questionId: {
           attemptId,
@@ -197,6 +222,13 @@ export class AssessmentsService {
         ...data,
       },
     });
+
+    trackEvent({
+      eventName: 'assessment.auto_saved',
+      userId,
+      properties: { attemptId, questionId: input.questionId },
+    });
+    return response;
   }
 
   async saveResponses(attemptId: string, userId: string, responses: SaveResponseInput[]) {
@@ -220,6 +252,11 @@ export class AssessmentsService {
       throw new BadRequestError('Only an in-progress attempt can be submitted.');
     }
 
+    trackEvent({
+      eventName: 'assessment.submitted',
+      userId,
+      properties: { attemptId, role },
+    });
     await this.triggerEvaluation(attemptId, userId);
     return this.requireOwnedAttempt(attemptId, userId);
   }
@@ -269,6 +306,11 @@ export class AssessmentsService {
       { attemptId },
       { jobId: `assessment-evaluation-${attemptId}` },
     );
+    trackEvent({
+      eventName: 'evaluation.started',
+      userId,
+      properties: { attemptId, evaluationId: evaluation.id },
+    });
     return evaluation;
   }
 

@@ -142,7 +142,7 @@ export class AuthService {
         throw new NotFoundError('Guest role is not configured.');
       }
 
-      return tx.user.create({
+      const created = await tx.user.create({
         data: {
           email,
           roleId: guestRole.id,
@@ -168,6 +168,12 @@ export class AuthService {
         },
         include: { role: true, profile: true },
       });
+      trackEvent({
+        eventName: 'guest.account_created',
+        userId: created.id,
+        properties: { provider: 'GOOGLE' },
+      });
+      return created;
     });
 
     trackEvent({

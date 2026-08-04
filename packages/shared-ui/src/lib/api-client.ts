@@ -16,10 +16,16 @@ export interface ApiClientConfig {
   baseUrl: string;
   /** Optional default headers merged into every request */
   defaultHeaders?: HeadersInit;
+  /** Optional per-request auth/header resolver (e.g. Bearer access token) */
+  getHeaders?: () => HeadersInit | Promise<HeadersInit>;
+  /** Optional 401 recovery hook; return true to retry the original request once */
+  onUnauthorized?: () => Promise<boolean>;
 }
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
+  /** Skip the unauthorized recovery hook for this request */
+  skipAuthRetry?: boolean;
 }
 
 export interface ApiClient {
@@ -35,21 +41,34 @@ export interface ApiClient {
  * Pass portal-specific `baseUrl` (and later auth headers) at creation time.
  */
 export function createApiClient(config: ApiClientConfig): ApiClient {
-  const { baseUrl, defaultHeaders } = config;
+  const { baseUrl, defaultHeaders, getHeaders, onUnauthorized } = config;
 
-  async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { body, headers, ...rest } = options;
+  async function request<T>(
+    path: string,
+    options: RequestOptions = {},
+    isRetry = false,
+  ): Promise<T> {
+    const { body, headers, skipAuthRetry, ...rest } = options;
+    const dynamicHeaders = getHeaders ? await getHeaders() : undefined;
     const response = await fetch(`${baseUrl}${path}`, {
       ...rest,
       headers: {
         'Content-Type': 'application/json',
         ...defaultHeaders,
+        ...dynamicHeaders,
         ...headers,
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 
     const payload = (await response.json()) as ApiResponse<T>;
+
+    if (response.status === 401 && !isRetry && !skipAuthRetry && onUnauthorized) {
+      const recovered = await onUnauthorized();
+      if (recovered) {
+        return request<T>(path, options, true);
+      }
+    }
 
     if (!response.ok || !payload.success) {
       const errorPayload = payload as Extract<ApiResponse<T>, { success: false }>;

@@ -1,5 +1,6 @@
 import { prisma } from '../../../config/database';
 import { createWorker, QUEUE_NAMES } from '../../../jobs';
+import { trackEvent } from '../../../services/analytics.service';
 
 export interface AssessmentEvaluationJob {
   attemptId: string;
@@ -136,6 +137,11 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
       }
     });
 
+    trackEvent({
+      eventName: 'evaluation.completed',
+      userId: attempt.userId,
+      properties: { attemptId, percentage, resultsLocked: attempt.resultsLocked },
+    });
     return { percentage };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Assessment evaluation failed.';
@@ -164,6 +170,10 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
         },
       }),
     ]);
+    trackEvent({
+      eventName: 'evaluation.failed',
+      properties: { attemptId, message },
+    });
     throw error;
   }
 }
