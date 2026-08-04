@@ -20,7 +20,7 @@ Critical gaps remain:
 2. **~~RBAC model is incoherent at the identity boundary~~** — **Resolved** (roles `ADMIN`/`USER`/`GUEST`; commercial via `FREE`/`PREMIUM` plans). See `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`.
 3. **~~Auth is incomplete~~** — **Clarified:** Authentication **Foundation** is implemented (JWT, middleware, Google OAuth config/provider, Redis, refresh-token store). Auth **HTTP APIs** (login/refresh/logout/session) are intentionally deferred to **Feature Implementation** — not an architectural defect. See `docs/architecture/AUTHENTICATION_FOUNDATION.md`.
 4. **~~Frontend is duplicated scaffolding~~** — **Resolved** via `@hirefast/shared-ui` (see `docs/architecture/SHARED_UI.md`). Portal pages/constants remain app-local by design.
-5. **Operational readiness is shallow** — no monitoring/APM, no backup/DR runbooks, no e2e, CI omits lint/format, workers are empty shells.
+5. **Operational readiness is shallow** — no monitoring/APM, no backup/DR runbooks, no e2e, CI omits lint/format. BullMQ **queues** are foundation-ready; **feature workers** are intentionally deferred (see `BULLMQ_FOUNDATION.md`) — not an empty-shell defect.
 6. **Security posture is “scaffolded, not enforced”** — Helmet/CORS/rate-limit exist globally; IDOR, idempotency, request IDs, permission checks, and scoped rate limits do not (enforcement lands with feature routes).
 
 **Verdict:** Architecture is a **strong blueprint**. Authentication Foundation is in place. Domain Feature Implementation (including auth APIs) remains ahead. Approve **conditionally** for remaining Phase 0 architecture items (Section 19–20) — do **not** treat deferred auth APIs as a foundation failure.
@@ -98,7 +98,7 @@ Critical gaps remain:
 
 ### Backend / AI / jobs
 
-- BullMQ queues registered; **zero workers**.
+- BullMQ **queue infrastructure** registered at boot; **feature processors** deferred by Architecture-First design (`createWorker` available for modules).
 - `AIService.complete` exists; no prompt registry, retries, cost controls, or job integration.
 - R2: put/delete/url only — no presign, no virus-scan hook, no upload routes.
 - Logger is custom `console` JSON — fine for early stage; weak for prod correlation/sampling.
@@ -113,17 +113,17 @@ Critical gaps remain:
 
 ## 13. Risks
 
-| Risk                           | Severity | Why it hurts                                                                             |
-| ------------------------------ | -------- | ---------------------------------------------------------------------------------------- |
-| **Contract drift**             | Critical | FE builds against OpenAPI while BE lacks routes → blocked sprints or ad-hoc APIs         |
-| **~~Premium = role~~**         | —        | **Resolved** — commercial access via subscription only                                   |
-| **Auth Feature APIs deferred** | Info     | Expected under Architecture-First; foundation ready — see `AUTHENTICATION_FOUNDATION.md` |
-| **Empty workers**              | High     | AI/report/email will land in HTTP handlers “just this once”                              |
-| **~~UI fork~~**                | —        | **Resolved** — `@hirefast/shared-ui`                                                     |
-| **No observability**           | High     | Cannot operate AI cost, queue lag, or auth failures in prod                              |
-| **IDOR if rushed**             | Critical | Attempt/report/file IDs are guessable UUIDs still need ownership checks — easy to forget |
-| **Permission table theater**   | Medium   | Maintained seed data that auth never reads → false sense of RBAC                         |
-| **Analytics growth**           | Medium   | Unpartitioned `analytics_events` / `audit_logs` will hurt                                |
+| Risk                           | Severity | Why it hurts                                                                                  |
+| ------------------------------ | -------- | --------------------------------------------------------------------------------------------- |
+| **Contract drift**             | Critical | FE builds against OpenAPI while BE lacks routes → blocked sprints or ad-hoc APIs              |
+| **~~Premium = role~~**         | —        | **Resolved** — commercial access via subscription only                                        |
+| **Auth Feature APIs deferred** | Info     | Expected under Architecture-First; foundation ready — see `AUTHENTICATION_FOUNDATION.md`      |
+| **~~Empty workers~~**          | —        | **Clarified** — foundation has queues + worker factory; processors are Feature Implementation |
+| **~~UI fork~~**                | —        | **Resolved** — `@hirefast/shared-ui`                                                          |
+| **No observability**           | High     | Cannot operate AI cost, queue lag, or auth failures in prod                                   |
+| **IDOR if rushed**             | Critical | Attempt/report/file IDs are guessable UUIDs still need ownership checks — easy to forget      |
+| **Permission table theater**   | Medium   | Maintained seed data that auth never reads → false sense of RBAC                              |
+| **Analytics growth**           | Medium   | Unpartitioned `analytics_events` / `audit_logs` will hurt                                     |
 
 ---
 
@@ -153,8 +153,7 @@ Critical gaps remain:
 3. **~~Extract `packages/shared-ui`~~** — **Done** (see `docs/architecture/SHARED_UI.md`).
 4. **Standardize cross-cutting middleware**  
    Request ID, consistent 429 code (`RATE_LIMITED`), align rate-limit defaults with STANDARDS, idempotency for future submit.
-5. **Worker bootstrap**  
-   At least one no-op or heartbeat worker + DLQ convention so AI jobs never default to request-thread.
+5. **~~Worker bootstrap / noop consumer~~** — **Clarified:** BullMQ foundation is queues + factory; feature modules register workers when implemented. No central placeholder `registerJobs()`. See `BULLMQ_FOUNDATION.md`.
 6. **Freeze API ambiguities**  
    Single status for report create (`200` + `GENERATING`); document billing as out-of-band until `/billing` exists.
 
@@ -223,8 +222,9 @@ Critical gaps remain:
              │   ┌──────────┐   ┌──────────┐   ┌────────────┐     │
              │   │ Prisma   │   │ Redis    │   │ BullMQ     │     │
              │   │ Postgres │   │ sessions │   │ queues     │     │
-             │   │ (38 tbl) │   │ cache*   │   │ (no workers│     │
-             │   └──────────┘   └──────────┘   │  yet)      │     │
+             │   │ (38 tbl) │   │ cache*   │   │ queues ✅  │     │
+             │   └──────────┘   └──────────┘   │ workers =  │     │
+             │                                 │ features   │     │
              │                                 └─────┬──────┘     │
              │                                       │            │
              │                          ┌────────────┼────────┐   │
@@ -250,7 +250,7 @@ Critical gaps remain:
 | ADR-004 | REST `/api/v1` + standard envelope                     | **Accepted** | —                                                                   |
 | ADR-005 | Google OAuth only (no password table)                  | **Accepted** | Foundation ready; Feature APIs deferred (Architecture-First)        |
 | ADR-006 | JRS/backend eval ≠ AI reports                          | **Accepted** | Non-negotiable product rule — keep                                  |
-| ADR-007 | BullMQ for AI/report/email/notifications               | **Accepted** | Workers must exist before those features                            |
+| ADR-007 | BullMQ for AI/report/email/notifications               | **Accepted** | Queues foundation; workers feature-owned                            |
 | ADR-008 | AI via provider interface (OpenAI first)               | **Accepted** | Needs prompt/job layer                                              |
 | ADR-009 | Files metadata in Postgres; bytes in R2                | **Accepted** | Presign flow TBD                                                    |
 | ADR-010 | Roles = ADMIN/USER/GUEST; plans = commercial           | **Accepted** | Separated — see `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md` |
@@ -273,7 +273,8 @@ Critical gaps remain:
 | Auth feature APIs (login / refresh / logout / session)   | ⏳ Feature Implementation                        |
 | RBAC entitlements coherent                               | ✅ (identity roles; commercial via subscription) |
 | Domain modules implemented                               | ❌                                               |
-| Workers processing jobs                                  | ❌                                               |
+| BullMQ queue foundation                                  | ✅                                               |
+| Feature workers (AI / report / email / notifications)    | ⏳ Feature Implementation                        |
 | Observability                                            | ❌                                               |
 | Backups / DR                                             | ❌                                               |
 | Secrets management (non-local)                           | ❌                                               |
@@ -299,7 +300,7 @@ The HireFast architecture is **approved as a foundation blueprint**. Authenticat
 1. ~~Fix **role vs subscription / entitlement** model~~ — **Done** (ADR-010).
 2. ~~Authentication Foundation~~ — **Done** (see `AUTHENTICATION_FOUNDATION.md`). Auth HTTP APIs → Feature Implementation.
 3. ~~Extract **shared UI** and stop duplicating portals~~ — **Done** (`@hirefast/shared-ui`).
-4. Establish **worker/process conventions** for BullMQ (even with a noop consumer).
+4. ~~Establish **worker/process conventions** for BullMQ~~ — **Done** (foundation queues + feature-owned `createWorker`; see `BULLMQ_FOUNDATION.md`).
 5. Add **request ID + consistent error/rate-limit codes**; freeze OpenAPI ambiguities (report status codes).
 6. Add **CI lint** and a written rule: _no module merges without tests for authz ownership_.
 
@@ -308,7 +309,7 @@ The HireFast architecture is **approved as a foundation blueprint**. Authenticat
 - Implement assessments/AI/reports **without** using the auth foundation (JWT middleware + subscription gates) when those routes ship.
 - Invent parallel session/OAuth helpers instead of `providers/auth` + `RefreshTokenStore`.
 - Reintroduce portal UI forks instead of extending `@hirefast/shared-ui`.
-- Run evaluation/AI **inside HTTP handlers** because workers “aren’t ready.”
+- Run evaluation/AI **inside HTTP handlers** instead of enqueueing to BullMQ feature workers.
 - Treat OpenAPI as aspirational while shipping incompatible routes.
 
 ### Architect’s closing challenge
@@ -326,11 +327,11 @@ Consume the foundation when features begin; do not rebuild it.
 | Only health module routed                                     | `apps/backend/src/routes/index.ts`                                               |
 | Auth middleware (foundation; mount at Feature Implementation) | `apps/backend/src/middlewares/auth.middleware.ts`                                |
 | Auth provider + refresh store (foundation)                    | `apps/backend/src/providers/auth/`, `infrastructure/auth/refresh-token.store.ts` |
-| Empty workers                                                 | `apps/backend/src/jobs/worker.ts`                                                |
+| BullMQ queue + worker factory                                 | `apps/backend/src/jobs/`                                                         |
 | 38 Prisma models                                              | `prisma/schema.prisma`                                                           |
 | OpenAPI ~81 paths                                             | `docs/api/openapi.yaml`                                                          |
 | Shared UI package                                             | `packages/shared-ui`                                                             |
-| FE auth stub (feature phase)                                  | `apps/*/src/components/providers/auth-provider.tsx`                              |
+| FE auth stub (feature phase)                                  | `packages/shared-ui/src/providers/auth-provider.tsx`                             |
 | CI scope                                                      | `.github/workflows/ci.yml`                                                       |
 | Identity roles ADMIN/USER/GUEST                               | `apps/backend/prisma/seeds/roles-permissions.ts`                                 |
 | Subscription plans FREE/PREMIUM                               | `apps/backend/prisma/seeds/subscription-plans.ts`                                |

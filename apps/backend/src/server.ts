@@ -2,10 +2,15 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { connectRedis, disconnectRedis } from './config/redis';
-import { closeAllQueues, registerDefaultQueues } from './jobs/queue-manager';
-import { closeAllWorkers, registerJobs } from './jobs/worker';
+import { closeAllQueues, closeAllWorkers, initializePlatformQueues } from './jobs';
 import { logger } from './utils/logger';
 
+/**
+ * API process bootstrap — platform infrastructure only.
+ *
+ * Startup initializes Redis + BullMQ queues. Feature modules register their
+ * own workers when those modules are implemented (not during foundation boot).
+ */
 async function bootstrap(): Promise<void> {
   const app = createApp();
 
@@ -21,8 +26,7 @@ async function bootstrap(): Promise<void> {
 
   try {
     await connectRedis();
-    registerDefaultQueues();
-    registerJobs();
+    initializePlatformQueues();
   } catch (error) {
     logger.error('Failed to connect to Redis / initialize queues', { error });
     if (env.isProduction) {
