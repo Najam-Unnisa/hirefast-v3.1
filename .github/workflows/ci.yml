@@ -61,22 +61,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build shared packages
-        run: |
-          pnpm --filter @hirefast/shared-types build
-          pnpm --filter @hirefast/shared-utils build
-          pnpm --filter @hirefast/shared-config build
+        run: pnpm run -r --filter=./packages/* build
 
       - name: Generate Prisma client
         run: pnpm db:generate
 
-      - name: Run Prisma migrate
+      - name: Run database migrations
         run: pnpm --filter @hirefast/backend exec prisma migrate deploy --schema=../../prisma/schema.prisma
 
-      - name: Typecheck
+      - name: Prettier format check
+        run: pnpm format:check
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: TypeScript typecheck
         run: pnpm typecheck
 
-      - name: Test
+      - name: Unit and integration tests
         run: pnpm test
 
-      - name: Build apps
-        run: pnpm build
+      - name: Build applications
+        run: pnpm run -r --filter=./apps/* build
