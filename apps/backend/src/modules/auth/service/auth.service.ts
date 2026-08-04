@@ -46,10 +46,13 @@ function asRole(role: string): UserRoleValue {
 }
 
 export class AuthService {
-  async startGoogleAuth(): Promise<{ authorizationUrl: string; state: string }> {
+  async startGoogleAuth(
+    portal: 'candidate' | 'admin' = 'candidate',
+  ): Promise<{ authorizationUrl: string; state: string }> {
     const provider = authProviderService.requireReady();
     const state = randomBytes(32).toString('base64url');
-    await redisService.set(`${OAUTH_STATE_PREFIX}${state}`, 'pending', OAUTH_STATE_TTL_SECONDS);
+    const portalValue = portal === 'admin' ? 'admin' : 'candidate';
+    await redisService.set(`${OAUTH_STATE_PREFIX}${state}`, portalValue, OAUTH_STATE_TTL_SECONDS);
 
     return {
       authorizationUrl: provider.buildAuthorizationUrl({ state }),
@@ -60,17 +63,18 @@ export class AuthService {
   async handleGoogleCallback(
     code: string | undefined,
     state: string | undefined,
-  ): Promise<AuthTokenResult> {
+  ): Promise<{ tokens: AuthTokenResult; portal: 'candidate' | 'admin' }> {
     if (!code || !state) {
       throw new BadRequestError('Google authorization code and state are required.');
     }
 
     const stateKey = `${OAUTH_STATE_PREFIX}${state}`;
-    const validState = await redisService.exists(stateKey);
-    if (!validState) {
+    const portalRaw = await redisService.get(stateKey);
+    if (!portalRaw) {
       throw new UnauthorizedError('OAuth state is invalid or expired.');
     }
     await redisService.del(stateKey);
+    const portal: 'candidate' | 'admin' = portalRaw === 'admin' ? 'admin' : 'candidate';
 
     const provider = authProviderService.requireReady();
     const providerTokens = await provider.exchangeAuthorizationCode(code);
@@ -178,12 +182,16 @@ export class AuthService {
       return created;
     });
 
+    if (portal === 'admin' && user.role.name !== ROLES.ADMIN) {
+      throw new UnauthorizedError('This portal is restricted to administrators.');
+    }
+
     trackEvent({
-      eventName: 'auth.google_login',
+      eventName: portal === 'admin' ? 'admin.login' : 'auth.google_login',
       userId: user.id,
-      properties: { role: user.role.name },
+      properties: { role: user.role.name, portal, method: 'google' },
     });
-    return this.issueSession(user);
+    return { tokens: await this.issueSession(user), portal };
   }
 
   async devGuestLogin(emailInput: string | undefined): Promise<AuthTokenResult> {

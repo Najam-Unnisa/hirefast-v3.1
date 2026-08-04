@@ -22,6 +22,7 @@ import {
   fetchCurrentUser,
   logout as logoutRequest,
   mapAuthUser,
+  startGoogleAuth,
 } from '@/services/auth.service';
 import { trackClientEvent } from '@/services/analytics.service';
 import { ApiClientError } from '@/services/api-client';
@@ -34,6 +35,7 @@ interface SessionContextValue {
   isAdmin: boolean;
   refreshUser: () => Promise<AuthUser | null>;
   establishSession: (tokens: SessionTokens) => Promise<AuthUser>;
+  beginGoogleSignIn: () => Promise<void>;
   beginDevAdminSignIn: (email?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -86,6 +88,12 @@ export function SessionProvider({ children }: { children: ReactNode }): React.Re
     [setUser],
   );
 
+  const beginGoogleSignIn = useCallback(async () => {
+    trackClientEvent('admin.login_started', { method: 'google' });
+    const { authorizationUrl } = await startGoogleAuth();
+    window.location.assign(authorizationUrl);
+  }, []);
+
   const beginDevAdminSignIn = useCallback(
     async (email?: string) => {
       const tokens = await createDevAdminSession(email);
@@ -114,10 +122,11 @@ export function SessionProvider({ children }: { children: ReactNode }): React.Re
       isAdmin: user?.role === 'ADMIN',
       refreshUser,
       establishSession,
+      beginGoogleSignIn,
       beginDevAdminSignIn,
       signOut,
     }),
-    [status, user, refreshUser, establishSession, beginDevAdminSignIn, signOut],
+    [status, user, refreshUser, establishSession, beginGoogleSignIn, beginDevAdminSignIn, signOut],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

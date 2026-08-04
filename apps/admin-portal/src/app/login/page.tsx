@@ -18,7 +18,7 @@ import { ApiClientError } from '@/services/api-client';
 
 export default function LoginPage(): React.ReactElement {
   const router = useRouter();
-  const { beginDevAdminSignIn, status, isAdmin } = useSession();
+  const { beginDevAdminSignIn, beginGoogleSignIn, status, isAdmin } = useSession();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +54,21 @@ export default function LoginPage(): React.ReactElement {
     }
   }
 
+  async function handleGoogleLogin(): Promise<void> {
+    setBusy(true);
+    setError(null);
+    try {
+      await beginGoogleSignIn();
+    } catch (err) {
+      setError(
+        err instanceof ApiClientError
+          ? err.message
+          : 'Could not start Google administrator sign-in.',
+      );
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-md flex-col justify-center gap-6 px-4 py-16">
       <div className="space-y-2">
@@ -74,12 +89,21 @@ export default function LoginPage(): React.ReactElement {
         </Alert>
       ) : null}
 
+      <Button
+        type="button"
+        className="w-full"
+        disabled={busy}
+        onClick={() => void handleGoogleLogin()}
+      >
+        {busy ? 'Redirecting…' : 'Continue with Google'}
+      </Button>
+
       {IS_PRODUCTION ? (
         <Alert>
-          <AlertTitle>Production sign-in</AlertTitle>
+          <AlertTitle>Administrator accounts only</AlertTitle>
           <AlertDescription>
-            Use Google OAuth configured for administrator accounts. Development login is disabled in
-            production.
+            Google sign-in succeeds only for users with the ADMIN role. Development login is
+            disabled in production.
           </AlertDescription>
         </Alert>
       ) : (
@@ -101,13 +125,14 @@ export default function LoginPage(): React.ReactElement {
           <Button
             type="button"
             className="w-full"
+            variant="outline"
             disabled={busy}
             onClick={() => void handleDevLogin()}
           >
             {busy ? 'Signing in…' : 'Dev admin login'}
           </Button>
           <p className="text-xs text-[var(--hf-muted)]">
-            Non-production only. In production, administrators sign in via Google.
+            Non-production only. Prefer Google for production-shaped auth testing.
           </p>
         </div>
       )}

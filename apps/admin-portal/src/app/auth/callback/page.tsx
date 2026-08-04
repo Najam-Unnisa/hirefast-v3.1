@@ -7,27 +7,53 @@ import { useSession } from '@/providers/session-provider';
 import { trackClientEvent } from '@/services/analytics.service';
 import { ApiClientError } from '@/services/api-client';
 
+function readOAuthParams(searchParams: URLSearchParams): {
+  error: string | null;
+  message: string | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiresIn: string | undefined;
+} {
+  const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : '';
+  const hashParams = new URLSearchParams(hash);
+
+  return {
+    error: searchParams.get('error') ?? hashParams.get('error'),
+    message: searchParams.get('message') ?? hashParams.get('message'),
+    // Success tokens are delivered in the URL fragment only (never query string).
+    accessToken: hashParams.get('accessToken'),
+    refreshToken: hashParams.get('refreshToken'),
+    expiresIn: hashParams.get('expiresIn') ?? undefined,
+  };
+}
+
 function AuthCallbackInner(): React.ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { establishSession } = useSession();
+  const { establishSession, signOut } = useSession();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const authError = searchParams.get('error');
-    const message = searchParams.get('message');
+    const {
+      error: authError,
+      message,
+      accessToken,
+      refreshToken,
+      expiresIn,
+    } = readOAuthParams(searchParams);
+
     if (authError) {
       setError(message || 'Authentication failed. Please try again.');
       return;
     }
 
-    const accessToken = searchParams.get('accessToken');
-    const refreshToken = searchParams.get('refreshToken');
-    const expiresIn = searchParams.get('expiresIn') ?? undefined;
-
     if (!accessToken || !refreshToken) {
       setError('Missing authentication tokens. Please sign in again.');
       return;
+    }
+
+    if (typeof window !== 'undefined' && window.location.hash) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
     }
 
     let cancelled = false;
@@ -39,7 +65,10 @@ function AuthCallbackInner(): React.ReactElement {
           expiresIn,
         });
         if (user.role !== 'ADMIN') {
-          setError('This portal is restricted to administrators.');
+          await signOut();
+          if (!cancelled) {
+            setError('This portal is restricted to administrators.');
+          }
           return;
         }
         trackClientEvent('admin.login', { method: 'oauth' });
@@ -58,7 +87,7 @@ function AuthCallbackInner(): React.ReactElement {
     return () => {
       cancelled = true;
     };
-  }, [searchParams, establishSession, router]);
+  }, [searchParams, establishSession, signOut, router]);
 
   if (error) {
     return (

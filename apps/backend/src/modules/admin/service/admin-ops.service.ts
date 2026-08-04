@@ -318,10 +318,10 @@ export class AdminOpsService {
       include: { evaluation: true },
     });
     if (!attempt) throw new NotFoundError('Attempt not found.');
-    if (!['SUBMITTED', 'EVALUATING', 'FAILED', 'COMPLETED'].includes(attempt.status)) {
+    if (!['SUBMITTED', 'EVALUATING', 'FAILED'].includes(attempt.status)) {
       throw new BadRequestError('Attempt is not eligible for evaluation retry.');
     }
-    if (attempt.evaluation?.status === 'COMPLETED' && attempt.status === 'COMPLETED') {
+    if (attempt.evaluation?.status === 'COMPLETED') {
       throw new BadRequestError(
         'Completed evaluations are immutable. Retry only failed or stuck jobs.',
       );

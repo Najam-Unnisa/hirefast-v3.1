@@ -3,6 +3,7 @@ import { getAccessToken } from '@/lib/session';
 
 export type AdminAnalyticsEventName =
   | 'admin.login'
+  | 'admin.login_started'
   | 'admin.dashboard_viewed'
   | 'admin.candidate_viewed'
   | 'admin.assessment_created'

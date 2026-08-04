@@ -41,3 +41,11 @@ export async function createDevAdminSession(email?: string): Promise<SessionToke
     skipAuthRetry: true,
   });
 }
+
+export async function startGoogleAuth(): Promise<{ authorizationUrl: string; state: string }> {
+  return apiClient.post<{ authorizationUrl: string; state: string }>(
+    '/auth/google',
+    { portal: 'admin' },
+    { skipAuthRetry: true },
+  );
+}

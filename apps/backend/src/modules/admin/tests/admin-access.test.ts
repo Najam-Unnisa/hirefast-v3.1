@@ -118,6 +118,19 @@ describe('Admin portal access', () => {
     expect(response.status).toBe(403);
   });
 
+  it('rejects GUEST from admin overview', async () => {
+    const guest = createAuthTokens({
+      sub: '3da8fdf0-a216-4868-a1ab-f7be820fe908',
+      email: 'guest@example.test',
+      role: 'GUEST',
+    });
+    const response = await request(app)
+      .get('/api/v1/admin/analytics/overview')
+      .set('Authorization', `Bearer ${guest.accessToken}`);
+
+    expect(response.status).toBe(403);
+  });
+
   it('rejects unauthenticated access', async () => {
     const response = await request(app).get('/api/v1/admin/users');
     expect(response.status).toBe(401);
