@@ -5,7 +5,7 @@
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
-export type ApiAuthClass = 'public' | 'authenticated' | 'guest' | 'freemium' | 'premium' | 'admin';
+export type ApiAuthClass = 'public' | 'authenticated' | 'guest' | 'user' | 'admin';
 
 export type ApiErrorCode =
   | 'VALIDATION_ERROR'
@@ -13,6 +13,7 @@ export type ApiErrorCode =
   | 'FORBIDDEN'
   | 'RESULTS_LOCKED'
   | 'PREMIUM_REQUIRED'
+  | 'SUBSCRIPTION_REQUIRED'
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'RATE_LIMITED'
@@ -29,7 +30,7 @@ export interface AuthTokensDto {
 export interface CurrentUserDto {
   id: string;
   email: string;
-  role: 'ADMIN' | 'GUEST' | 'FREEMIUM' | 'PREMIUM';
+  role: 'ADMIN' | 'USER' | 'GUEST';
   status: string;
   emailVerified: boolean;
   profile: {
@@ -37,6 +38,7 @@ export interface CurrentUserDto {
     displayName?: string | null;
     avatarUrl?: string | null;
   };
+  /** Commercial access — from subscription service, not RBAC role */
   subscription?: {
     planCode: string;
     status: string;

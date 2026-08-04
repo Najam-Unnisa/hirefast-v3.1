@@ -17,7 +17,7 @@ However, this review **does not grant unconditional approval** for unconstrained
 Critical gaps remain:
 
 1. **Contract–implementation drift** — OpenAPI documents ~81 paths; backend mounts **only** `/health`.
-2. **RBAC model is incoherent at the identity boundary** — `FREEMIUM` / `PREMIUM` are both **roles** and **commercial products**, with identical seeded permissions.
+2. **~~RBAC model is incoherent at the identity boundary~~** — **Resolved** (roles `ADMIN`/`USER`/`GUEST`; commercial via `FREE`/`PREMIUM` plans). See `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`.
 3. **Auth is incomplete relative to its own contract** — JWT helpers exist; Redis-backed refresh/logout, Google callback, and wired middleware do not.
 4. **Frontend is duplicated scaffolding** — candidate and admin portals share ~17 identical UI files with no `shared-ui` package; auth provider is a stub.
 5. **Operational readiness is shallow** — no monitoring/APM, no backup/DR runbooks, no e2e, CI omits lint/format, workers are empty shells.
@@ -245,45 +245,45 @@ Critical gaps remain:
 
 ## 18. Architecture Decision Records (ADR summary)
 
-| ADR     | Decision                                               | Status        | Challenge                                      |
-| ------- | ------------------------------------------------------ | ------------- | ---------------------------------------------- |
-| ADR-001 | Modular monolith (Express) over microservices          | **Accepted**  | Correct for current team/stage                 |
-| ADR-002 | pnpm monorepo: 2 Next apps + backend + shared packages | **Accepted**  | Missing shared-ui package                      |
-| ADR-003 | PostgreSQL + Prisma; UUID PKs; snake_case DB maps      | **Accepted**  | —                                              |
-| ADR-004 | REST `/api/v1` + standard envelope                     | **Accepted**  | —                                              |
-| ADR-005 | Google OAuth only (no password table)                  | **Accepted**  | Must finish Redis session story                |
-| ADR-006 | JRS/backend eval ≠ AI reports                          | **Accepted**  | Non-negotiable product rule — keep             |
-| ADR-007 | BullMQ for AI/report/email/notifications               | **Accepted**  | Workers must exist before those features       |
-| ADR-008 | AI via provider interface (OpenAI first)               | **Accepted**  | Needs prompt/job layer                         |
-| ADR-009 | Files metadata in Postgres; bytes in R2                | **Accepted**  | Presign flow TBD                               |
-| ADR-010 | Roles include FREEMIUM/PREMIUM                         | **Contested** | **Revise** — conflicts with subscription model |
-| ADR-011 | OpenAPI YAML is Swagger source of truth                | **Accepted**  | Must not diverge from code                     |
-| ADR-012 | Soft deletes selective                                 | **Accepted**  | Index all soft-delete columns used in queries  |
-| ADR-013 | Dual portals (candidate/admin)                         | **Accepted**  | Share UI package                               |
+| ADR     | Decision                                               | Status       | Challenge                                                           |
+| ------- | ------------------------------------------------------ | ------------ | ------------------------------------------------------------------- |
+| ADR-001 | Modular monolith (Express) over microservices          | **Accepted** | Correct for current team/stage                                      |
+| ADR-002 | pnpm monorepo: 2 Next apps + backend + shared packages | **Accepted** | Missing shared-ui package                                           |
+| ADR-003 | PostgreSQL + Prisma; UUID PKs; snake_case DB maps      | **Accepted** | —                                                                   |
+| ADR-004 | REST `/api/v1` + standard envelope                     | **Accepted** | —                                                                   |
+| ADR-005 | Google OAuth only (no password table)                  | **Accepted** | Must finish Redis session story                                     |
+| ADR-006 | JRS/backend eval ≠ AI reports                          | **Accepted** | Non-negotiable product rule — keep                                  |
+| ADR-007 | BullMQ for AI/report/email/notifications               | **Accepted** | Workers must exist before those features                            |
+| ADR-008 | AI via provider interface (OpenAI first)               | **Accepted** | Needs prompt/job layer                                              |
+| ADR-009 | Files metadata in Postgres; bytes in R2                | **Accepted** | Presign flow TBD                                                    |
+| ADR-010 | Roles = ADMIN/USER/GUEST; plans = commercial           | **Accepted** | Separated — see `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md` |
+| ADR-011 | OpenAPI YAML is Swagger source of truth                | **Accepted** | Must not diverge from code                                          |
+| ADR-012 | Soft deletes selective                                 | **Accepted** | Index all soft-delete columns used in queries                       |
+| ADR-013 | Dual portals (candidate/admin)                         | **Accepted** | Share UI package                                                    |
 
 ---
 
 ## 19. Production Readiness Checklist
 
-| Item                                   | Ready? |
-| -------------------------------------- | ------ |
-| Stack frozen & documented              | ✅     |
-| Monorepo builds                        | ✅     |
-| DB schema migrated + seeded            | ✅     |
-| API contract published                 | ✅     |
-| Health checks (API/DB/Redis)           | ✅     |
-| Auth end-to-end                        | ❌     |
-| RBAC entitlements coherent             | ❌     |
-| Domain modules implemented             | ❌     |
-| Workers processing jobs                | ❌     |
-| Observability                          | ❌     |
-| Backups / DR                           | ❌     |
-| Secrets management (non-local)         | ❌     |
-| e2e / contract tests                   | ❌     |
-| CI lint + security gates               | ❌     |
-| Shared UI / DX for two portals         | ❌     |
-| Rate-limit & idempotency per STANDARDS | ❌     |
-| Staging environment                    | ❌     |
+| Item                                   | Ready?                                           |
+| -------------------------------------- | ------------------------------------------------ |
+| Stack frozen & documented              | ✅                                               |
+| Monorepo builds                        | ✅                                               |
+| DB schema migrated + seeded            | ✅                                               |
+| API contract published                 | ✅                                               |
+| Health checks (API/DB/Redis)           | ✅                                               |
+| Auth end-to-end                        | ❌                                               |
+| RBAC entitlements coherent             | ✅ (identity roles; commercial via subscription) |
+| Domain modules implemented             | ❌                                               |
+| Workers processing jobs                | ❌                                               |
+| Observability                          | ❌                                               |
+| Backups / DR                           | ❌                                               |
+| Secrets management (non-local)         | ❌                                               |
+| e2e / contract tests                   | ❌                                               |
+| CI lint + security gates               | ❌                                               |
+| Shared UI / DX for two portals         | ❌                                               |
+| Rate-limit & idempotency per STANDARDS | ❌                                               |
+| Staging environment                    | ❌                                               |
 
 **Production traffic:** **NO**  
 **Feature development:** **ONLY after P0**
@@ -322,17 +322,19 @@ Address those before celebrating the schema.
 
 ## Appendix A — Evidence base (sampled)
 
-| Evidence                     | Path                                                |
-| ---------------------------- | --------------------------------------------------- |
-| Only health module routed    | `apps/backend/src/routes/index.ts`                  |
-| Auth middleware unwired      | `apps/backend/src/middlewares/auth.middleware.ts`   |
-| Empty workers                | `apps/backend/src/jobs/worker.ts`                   |
-| 38 Prisma models             | `prisma/schema.prisma`                              |
-| OpenAPI ~81 paths            | `docs/api/openapi.yaml`                             |
-| Identical portal UI          | `apps/*/src/components/ui/*`                        |
-| Auth stub                    | `apps/*/src/components/providers/auth-provider.tsx` |
-| CI scope                     | `.github/workflows/ci.yml`                          |
-| FREEMIUM≈PREMIUM permissions | `apps/backend/prisma/seeds/roles-permissions.ts`    |
+| Evidence                        | Path                                                      |
+| ------------------------------- | --------------------------------------------------------- |
+| Only health module routed       | `apps/backend/src/routes/index.ts`                        |
+| Auth middleware unwired         | `apps/backend/src/middlewares/auth.middleware.ts`         |
+| Empty workers                   | `apps/backend/src/jobs/worker.ts`                         |
+| 38 Prisma models                | `prisma/schema.prisma`                                    |
+| OpenAPI ~81 paths               | `docs/api/openapi.yaml`                                   |
+| Identical portal UI             | `apps/*/src/components/ui/*`                              |
+| Auth stub                       | `apps/*/src/components/providers/auth-provider.tsx`       |
+| CI scope                        | `.github/workflows/ci.yml`                                |
+| Identity roles ADMIN/USER/GUEST | `apps/backend/prisma/seeds/roles-permissions.ts`          |
+| Subscription plans FREE/PREMIUM | `apps/backend/prisma/seeds/subscription-plans.ts`         |
+| Subscription middleware         | `apps/backend/src/middlewares/subscription.middleware.ts` |
 
 ---
 

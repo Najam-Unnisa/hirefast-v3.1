@@ -54,19 +54,19 @@ Abbreviations: **Auth** = authentication required · **Roles** = allowed roles �
 
 ## Phase 5 — Users & Profiles
 
-| Method | Path                         | Purpose                               | Auth | Roles                    | Notes                          |
-| ------ | ---------------------------- | ------------------------------------- | ---- | ------------------------ | ------------------------------ |
-| GET    | `/users/me`                  | Alias of auth me (user resource)      | Yes  | Any                      |                                |
-| GET    | `/users/me/profile`          | Full profile                          | Yes  | Any                      |                                |
-| PUT    | `/users/me/profile`          | Replace profile fields                | Yes  | Any                      |                                |
-| PATCH  | `/users/me/profile`          | Partial update                        | Yes  | Any                      |                                |
-| POST   | `/users/me/profile/complete` | Mark registration complete → Freemium | Yes  | GUEST (primarily)        | Idempotent if already complete |
-| GET    | `/users/me/preferences`      | Notification + locale prefs           | Yes  | Any                      |                                |
-| PATCH  | `/users/me/preferences`      | Update prefs                          | Yes  | Any                      |                                |
-| GET    | `/users/me/resume`           | Resume file metadata                  | Yes  | FREEMIUM, PREMIUM, ADMIN |                                |
-| PUT    | `/users/me/resume`           | Attach resume via `fileId`            | Yes  | FREEMIUM, PREMIUM, ADMIN |                                |
-| GET    | `/users/me/avatar`           | Avatar metadata                       | Yes  | Any                      |                                |
-| PUT    | `/users/me/avatar`           | Attach avatar via `fileId`            | Yes  | Any                      |                                |
+| Method | Path                         | Purpose                                       | Auth | Roles             | Notes                          |
+| ------ | ---------------------------- | --------------------------------------------- | ---- | ----------------- | ------------------------------ |
+| GET    | `/users/me`                  | Alias of auth me (user resource)              | Yes  | Any               |                                |
+| GET    | `/users/me/profile`          | Full profile                                  | Yes  | Any               |                                |
+| PUT    | `/users/me/profile`          | Replace profile fields                        | Yes  | Any               |                                |
+| PATCH  | `/users/me/profile`          | Partial update                                | Yes  | Any               |                                |
+| POST   | `/users/me/profile/complete` | Mark registration complete → USER + FREE plan | Yes  | GUEST (primarily) | Idempotent if already complete |
+| GET    | `/users/me/preferences`      | Notification + locale prefs                   | Yes  | Any               |                                |
+| PATCH  | `/users/me/preferences`      | Update prefs                                  | Yes  | Any               |                                |
+| GET    | `/users/me/resume`           | Resume file metadata                          | Yes  | USER, ADMIN       |                                |
+| PUT    | `/users/me/resume`           | Attach resume via `fileId`                    | Yes  | USER, ADMIN       |                                |
+| GET    | `/users/me/avatar`           | Avatar metadata                               | Yes  | Any               |                                |
+| PUT    | `/users/me/avatar`           | Attach avatar via `fileId`                    | Yes  | Any               |                                |
 
 ### Validation (profile)
 
@@ -111,7 +111,7 @@ Abbreviations: **Auth** = authentication required · **Roles** = allowed roles �
 **Filters:** `status=PUBLISHED` (default for non-admin), `accessTier`, `categoryId`, `q`  
 **Sort:** `createdAt`, `title`
 
-Premium assessments: non-premium roles receive `403 PREMIUM_REQUIRED` on detail/start.
+Premium assessments: callers without an active `PREMIUM` subscription receive `403 SUBSCRIPTION_REQUIRED` on detail/start (RBAC role is not used for this gate).
 
 ### Attempts lifecycle
 
@@ -151,20 +151,20 @@ Premium assessments: non-premium roles receive `403 PREMIUM_REQUIRED` on detail/
 
 ## Phase 7 — Evaluation / JRS / Reports / Recommendations
 
-| Method | Path                                                  | Purpose                                | Auth | Roles                       |
-| ------ | ----------------------------------------------------- | -------------------------------------- | ---- | --------------------------- |
-| POST   | `/attempts/:attemptId/evaluation`                     | Trigger/re-queue backend evaluation    | Yes  | Owner/ADMIN                 |
-| GET    | `/attempts/:attemptId/evaluation`                     | Deterministic evaluation status/result | Yes  | Owner/ADMIN 🔒              |
-| GET    | `/attempts/:attemptId/evaluation/skills`              | Skill scores                           | Yes  | Owner/ADMIN 🔒              |
-| GET    | `/attempts/:attemptId/jrs`                            | Job Readiness Score                    | Yes  | Owner/ADMIN 🔒              |
-| GET    | `/users/me/jrs/latest`                                | Latest JRS for dashboard               | Yes  | FREEMIUM, PREMIUM, ADMIN 🔒 |
-| GET    | `/attempts/:attemptId/ai-evaluation`                  | AI qualitative evaluation              | Yes  | Owner/ADMIN 🔒              |
-| GET    | `/attempts/:attemptId/reports`                        | List AI reports for attempt            | Yes  | Owner/ADMIN 🔒              |
-| GET    | `/reports/:reportId`                                  | Report detail + sections               | Yes  | Owner/ADMIN 🔒              |
-| POST   | `/attempts/:attemptId/reports`                        | Request report generation              | Yes  | Owner/ADMIN 🔒              |
-| GET    | `/users/me/reports`                                   | Report history                         | Yes  | Any 🔒                      | Page |
-| GET    | `/users/me/recommendations`                           | Learning recommendations               | Yes  | PREMIUM, ADMIN              | Page |
-| PATCH  | `/users/me/recommendations/:recommendationId/dismiss` | Dismiss recommendation                 | Yes  | PREMIUM, ADMIN              |
+| Method | Path                                                  | Purpose                                | Auth | Roles              |
+| ------ | ----------------------------------------------------- | -------------------------------------- | ---- | ------------------ |
+| POST   | `/attempts/:attemptId/evaluation`                     | Trigger/re-queue backend evaluation    | Yes  | Owner/ADMIN        |
+| GET    | `/attempts/:attemptId/evaluation`                     | Deterministic evaluation status/result | Yes  | Owner/ADMIN 🔒     |
+| GET    | `/attempts/:attemptId/evaluation/skills`              | Skill scores                           | Yes  | Owner/ADMIN 🔒     |
+| GET    | `/attempts/:attemptId/jrs`                            | Job Readiness Score                    | Yes  | Owner/ADMIN 🔒     |
+| GET    | `/users/me/jrs/latest`                                | Latest JRS for dashboard               | Yes  | USER, ADMIN 🔒     |
+| GET    | `/attempts/:attemptId/ai-evaluation`                  | AI qualitative evaluation              | Yes  | Owner/ADMIN 🔒     |
+| GET    | `/attempts/:attemptId/reports`                        | List AI reports for attempt            | Yes  | Owner/ADMIN 🔒     |
+| GET    | `/reports/:reportId`                                  | Report detail + sections               | Yes  | Owner/ADMIN 🔒     |
+| POST   | `/attempts/:attemptId/reports`                        | Request report generation              | Yes  | Owner/ADMIN 🔒     |
+| GET    | `/users/me/reports`                                   | Report history                         | Yes  | Any 🔒             | Page |
+| GET    | `/users/me/recommendations`                           | Learning recommendations               | Yes  | USER + sub PREMIUM | Page |
+| PATCH  | `/users/me/recommendations/:recommendationId/dismiss` | Dismiss recommendation                 | Yes  | USER + sub PREMIUM |
 
 🔒 Guest / incomplete profile → `403 RESULTS_LOCKED` for score/report bodies.
 
@@ -200,7 +200,7 @@ Premium assessments: non-premium roles receive `403 PREMIUM_REQUIRED` on detail/
     "currentStreak": 0,
     "badgesEarned": 0
   },
-  "subscription": { "planCode": "FREEMIUM", "status": "ACTIVE" },
+  "subscription": { "planCode": "FREE", "status": "ACTIVE" },
   "resultsLocked": false
 }
 ```
@@ -302,20 +302,22 @@ Filters: `isRead`, `type` · Sort: `createdAt`
 
 ## Phase 12 — Premium / Subscriptions
 
-| Method | Path                                 | Purpose                        | Auth | Roles          |
-| ------ | ------------------------------------ | ------------------------------ | ---- | -------------- |
-| GET    | `/subscriptions/plans`               | Public plan catalog            | Yes  | Any            |
-| GET    | `/subscriptions/me`                  | Current subscription           | Yes  | Any            |
-| GET    | `/subscriptions/me/features`         | Effective feature flags        | Yes  | Any            |
-| POST   | `/subscriptions/me/validate-feature` | Check one feature key          | Yes  | Any            |
-| GET    | `/premium/assessments`               | Premium assessment catalog     | Yes  | PREMIUM, ADMIN |
-| GET    | `/premium/reports`                   | Premium report list            | Yes  | PREMIUM, ADMIN | Page |
-| GET    | `/premium/recommendations`           | Alias of premium learning recs | Yes  | PREMIUM, ADMIN | Page |
+Authorization for premium surfaces: **Role `USER` + active `PREMIUM` subscription** (via subscription middleware). Admin manages content under `/admin/**` (role only).
+
+| Method | Path                                 | Purpose                        | Auth | Role | Subscription |
+| ------ | ------------------------------------ | ------------------------------ | ---- | ---- | ------------ |
+| GET    | `/subscriptions/plans`               | Public plan catalog            | Yes  | Any  | —            |
+| GET    | `/subscriptions/me`                  | Current subscription           | Yes  | Any  | —            |
+| GET    | `/subscriptions/me/features`         | Effective feature flags        | Yes  | Any  | —            |
+| POST   | `/subscriptions/me/validate-feature` | Check one feature key          | Yes  | Any  | —            |
+| GET    | `/premium/assessments`               | Premium assessment catalog     | Yes  | USER | PREMIUM      |
+| GET    | `/premium/reports`                   | Premium report list            | Yes  | USER | PREMIUM      | Page |
+| GET    | `/premium/recommendations`           | Alias of premium learning recs | Yes  | USER | PREMIUM      | Page |
 
 **POST `/subscriptions/me/validate-feature`**
 
 - Body: `{ "featureKey": "assessments.premium" }`
-- `200` data: `{ featureKey, allowed: boolean, reason?: "PREMIUM_REQUIRED" | "OK" }`
+- `200` data: `{ featureKey, allowed: boolean, reason?: "SUBSCRIPTION_REQUIRED" | "OK" }`
 
 Checkout/billing webhooks are **out of scope** for this contract version (future `/billing/**`).
 

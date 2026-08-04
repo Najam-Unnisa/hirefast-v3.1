@@ -2,26 +2,32 @@
 
 ## Status
 
-**Contested — must revise before feature development**
+**Accepted**
 
 ## Context
 
-Platform users include Guest, Freemium, Premium, Admin. Engineering Standards list these as RBAC roles. Product also requires subscription plans and plan features.
+Platform users include Guest, registered candidates, Premium subscribers, and Admin. Product also requires subscription plans and plan features.
 
-Current schema/seeds implement **both**:
+An earlier draft modeled commercial tiers as RBAC roles (`FREEMIUM`, `PREMIUM`) **and** as subscription plans, with identical role permissions. That duplicated sources of truth and invited `role === PREMIUM || subscription.active` checks.
 
-- `roles.name` ∈ {ADMIN, GUEST, FREEMIUM, PREMIUM}
-- `subscription_plans` / `user_subscriptions` / `plan_features`
+## Decision
 
-FREEMIUM and PREMIUM seeded permissions are identical, so role does not encode capability differences — subscription/features should.
+1. **Identity roles** (RBAC / JWT `role`): `ADMIN` | `USER` | `GUEST` only.
+2. **Commercial access**: `subscription_plans` (`FREE`, `PREMIUM`, …) + `user_subscriptions` + `plan_features`.
+3. **Authorization flow**: Authentication → RBAC (`authorize`) → Subscription validation (`requirePlan` / `requireFeature`) → feature handler.
+4. JWT carries identity only. Plan tier is never encoded as `role`.
+5. At most one `ACTIVE`/`TRIALING` subscription per user (partial unique index).
+6. New commercial tiers (PRO, STUDENT, ENTERPRISE) add plans/features only — **no** new RBAC roles.
 
-## Decision (recommended revision)
+## Consequences
 
-1. Treat **role** as security principal class: e.g. `ADMIN`, `GUEST`, `CANDIDATE` (or keep Freemium/Premium only as **derived claims**, not source of truth).
-2. Treat **subscription + plan_features** as entitlement source for premium gates.
-3. Expose a single server-side `assertFeature(userId, featureKey)` used by all premium routes.
-4. Add partial unique index: at most one active/trialing subscription per user.
+- Premium gates use subscription middleware / access service exclusively.
+- Admin and Guest continue to work via identity roles without commercial role pollution.
+- Seeds and migration remove legacy `FREEMIUM`/`PREMIUM` roles and rename plan `FREEMIUM` → `FREE`.
 
-## Consequences if unrevised
+## References
 
-Entitlement bugs on cancel/refund; duplicated checks; audit ambiguity; false confidence from permission tables that JWT auth never reads.
+- `docs/architecture/AUTHORIZATION_FLOW.md`
+- `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`
+- `apps/backend/src/middlewares/subscription.middleware.ts`
+- Migration: `prisma/migrations/20260804090000_rbac_subscription_separation`

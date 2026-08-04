@@ -3,6 +3,11 @@ import type { AuthTokens, JwtPayload, UserRoleValue } from '@hirefast/shared-typ
 import { env } from '../config/env';
 import { UnauthorizedError } from './errors';
 
+/**
+ * Sign / verify JWT access & refresh tokens.
+ * Claims are identity-only (`sub`, `email`, `role` ∈ ADMIN|USER|GUEST).
+ * Never encode subscription tier as `role`.
+ */
 export interface TokenUserClaims {
   sub: string;
   email: string;

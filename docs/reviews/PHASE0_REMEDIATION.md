@@ -6,8 +6,8 @@ Source: `docs/reviews/ARCHITECTURE_REVIEW_v1.md`
 
 ## P0 Gate
 
-- [ ] **ADR-010 revised** — entitlement model documented + schema/seed adjusted
-- [ ] Partial unique: one active/trialing subscription per user
+- [x] **ADR-010 revised** — entitlement model documented + schema/seed adjusted (`docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`)
+- [x] Partial unique: one active/trialing subscription per user
 - [ ] Auth vertical slice: Google OAuth → JWT → Redis refresh → `/auth/me` → logout
 - [ ] `authenticate` / `authorize` mounted on protected routes
 - [ ] `packages/shared-ui` extracted; portal duplicates removed

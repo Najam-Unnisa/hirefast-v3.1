@@ -1,10 +1,31 @@
 import type { PrismaClient } from '@prisma/client';
 
+/**
+ * Commercial plans — single source of truth for paid / free product access.
+ * Adding PRO / STUDENT / ENTERPRISE later: seed a plan + features only (no RBAC changes).
+ */
 export async function seedSubscriptionPlans(prisma: PrismaClient): Promise<void> {
-  const freemium = await prisma.subscriptionPlan.upsert({
-    where: { code: 'FREEMIUM' },
+  // Rename legacy FREEMIUM plan code → FREE if present
+  const legacyFreemium = await prisma.subscriptionPlan.findUnique({ where: { code: 'FREEMIUM' } });
+  if (legacyFreemium) {
+    await prisma.subscriptionPlan.update({
+      where: { id: legacyFreemium.id },
+      data: {
+        code: 'FREE',
+        name: 'Free',
+        description: 'Free registered candidate access',
+        priceCents: 0,
+        billingPeriod: 'none',
+        isActive: true,
+        sortOrder: 1,
+      },
+    });
+  }
+
+  const free = await prisma.subscriptionPlan.upsert({
+    where: { code: 'FREE' },
     update: {
-      name: 'Freemium',
+      name: 'Free',
       description: 'Free registered candidate access',
       priceCents: 0,
       currency: 'USD',
@@ -13,8 +34,8 @@ export async function seedSubscriptionPlans(prisma: PrismaClient): Promise<void>
       sortOrder: 1,
     },
     create: {
-      code: 'FREEMIUM',
-      name: 'Freemium',
+      code: 'FREE',
+      name: 'Free',
       description: 'Free registered candidate access',
       priceCents: 0,
       currency: 'USD',
@@ -47,7 +68,7 @@ export async function seedSubscriptionPlans(prisma: PrismaClient): Promise<void>
     },
   });
 
-  const freemiumFeatures = [
+  const freeFeatures = [
     'dashboard.access',
     'assessments.free',
     'reports.basic',
@@ -55,7 +76,7 @@ export async function seedSubscriptionPlans(prisma: PrismaClient): Promise<void>
   ];
 
   const premiumFeatures = [
-    ...freemiumFeatures,
+    ...freeFeatures,
     'assessments.premium',
     'reports.detailed',
     'analytics.advanced',
@@ -63,16 +84,18 @@ export async function seedSubscriptionPlans(prisma: PrismaClient): Promise<void>
     'ai.premium_features',
   ];
 
-  for (const featureKey of freemiumFeatures) {
+  for (const featureKey of freeFeatures) {
     await prisma.planFeature.upsert({
       where: {
-        planId_featureKey: { planId: freemium.id, featureKey },
+        planId_featureKey: { planId: free.id, featureKey },
       },
-      update: {},
+      update: {
+        description: `Free plan feature: ${featureKey}`,
+      },
       create: {
-        planId: freemium.id,
+        planId: free.id,
         featureKey,
-        description: `Freemium feature: ${featureKey}`,
+        description: `Free plan feature: ${featureKey}`,
       },
     });
   }
@@ -82,15 +105,17 @@ export async function seedSubscriptionPlans(prisma: PrismaClient): Promise<void>
       where: {
         planId_featureKey: { planId: premium.id, featureKey },
       },
-      update: {},
+      update: {
+        description: `Premium plan feature: ${featureKey}`,
+      },
       create: {
         planId: premium.id,
         featureKey,
-        description: `Premium feature: ${featureKey}`,
+        description: `Premium plan feature: ${featureKey}`,
       },
     });
   }
 
   // eslint-disable-next-line no-console
-  console.info('[seed] Subscription plans ready');
+  console.info('[seed] Subscription plans ready (FREE / PREMIUM)');
 }
