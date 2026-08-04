@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
-import { RestrictedForGuests } from '@/components/guards/restricted-for-guests';
+import { RequireRegistered } from '@/components/guards/require-registered';
+import { RegisteredDashboard } from '@/features/registered/components/registered-dashboard';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
 };
 
 export default function DashboardPage(): React.ReactElement {
-  return <RestrictedForGuests areaLabel="Dashboard" />;
+  return (
+    <RequireRegistered>
+      <RegisteredDashboard />
+    </RequireRegistered>
+  );
 }

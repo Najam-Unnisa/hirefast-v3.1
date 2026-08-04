@@ -2,8 +2,10 @@ import type { Prisma } from '@prisma/client';
 import type { UserRoleValue } from '@hirefast/shared-types';
 import { prisma } from '../../../config/database';
 import { ROLES } from '../../../constants/roles';
+import { PLAN_FEATURES } from '../../../constants/subscription';
 import { getQueue, QUEUE_NAMES } from '../../../jobs';
 import { trackEvent } from '../../../services/analytics.service';
+import { userHasFeature } from '../../../services/subscription-access.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../../utils/errors';
 
 const GUEST_ASSESSMENT_CODE = 'GENERAL_COMMUNICATION';
@@ -11,6 +13,12 @@ const RESULTS_LOCKED_ERRORS = [
   {
     code: 'RESULTS_LOCKED',
     message: 'Complete your profile to unlock assessment results.',
+  },
+];
+const PREMIUM_REQUIRED_ERRORS = [
+  {
+    code: 'PREMIUM_REQUIRED',
+    message: 'An active Premium subscription is required for this assessment.',
   },
 ];
 
@@ -23,50 +31,125 @@ export interface SaveResponseInput {
 }
 
 export class AssessmentsService {
-  async listAssessments(role: UserRoleValue) {
-    return prisma.assessment.findMany({
+  async listAssessments(role: UserRoleValue, userId: string) {
+    if (role === ROLES.GUEST) {
+      return prisma.assessment.findMany({
+        where: {
+          status: 'PUBLISHED',
+          accessTier: 'FREE',
+          isActive: true,
+          deletedAt: null,
+          code: GUEST_ASSESSMENT_CODE,
+        },
+        select: catalogSelect,
+        orderBy: { publishedAt: 'desc' },
+      });
+    }
+
+    const hasPremium = await userHasFeature(userId, PLAN_FEATURES.ASSESSMENTS_PREMIUM);
+    const assessments = await prisma.assessment.findMany({
       where: {
         status: 'PUBLISHED',
-        accessTier: 'FREE',
         isActive: true,
         deletedAt: null,
-        ...(role === ROLES.GUEST ? { code: GUEST_ASSESSMENT_CODE } : {}),
       },
-      select: {
-        id: true,
-        code: true,
-        slug: true,
-        title: true,
-        description: true,
-        instructions: true,
-        accessTier: true,
-        durationMinutes: true,
-        passingScore: true,
-        category: { select: { code: true, name: true } },
-        skills: {
-          select: {
-            weight: true,
-            skill: { select: { code: true, name: true } },
+      select: catalogSelect,
+      orderBy: [{ accessTier: 'asc' }, { publishedAt: 'desc' }],
+    });
+
+    return assessments.map((assessment) => ({
+      ...assessment,
+      locked: assessment.accessTier === 'PREMIUM' && !hasPremium,
+      upgradeRequired: assessment.accessTier === 'PREMIUM' && !hasPremium,
+    }));
+  }
+
+  async getAssessmentById(id: string, role: UserRoleValue, userId: string) {
+    return this.getVisibleAssessment({ id }, role, userId);
+  }
+
+  async getAssessmentBySlug(slug: string, role: UserRoleValue, userId: string) {
+    return this.getVisibleAssessment({ slug }, role, userId);
+  }
+
+  async listMyAttempts(
+    userId: string,
+    options: { page?: number; limit?: number; status?: string } = {},
+  ) {
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const where = {
+      userId,
+      ...(options.status ? { status: options.status as never } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      prisma.assessmentAttempt.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          assessment: {
+            select: { id: true, title: true, slug: true, code: true, accessTier: true },
+          },
+          evaluation: {
+            select: { percentage: true, passed: true, status: true },
+          },
+          jobReadinessScore: {
+            select: { overallScore: true, band: true },
           },
         },
-        _count: { select: { questions: true } },
+      }),
+      prisma.assessmentAttempt.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        assessmentId: item.assessmentId,
+        attemptNumber: item.attemptNumber,
+        status: item.status,
+        startedAt: item.startedAt,
+        submittedAt: item.submittedAt,
+        completedAt: item.completedAt,
+        resultsLocked: item.resultsLocked,
+        assessmentTitle: item.assessment.title,
+        assessmentSlug: item.assessment.slug,
+        accessTier: item.assessment.accessTier,
+        score: item.evaluation?.percentage != null ? Number(item.evaluation.percentage) : null,
+        jrs: item.jobReadinessScore
+          ? {
+              overallScore: Number(item.jobReadinessScore.overallScore),
+              band: item.jobReadinessScore.band,
+            }
+          : null,
+      })),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
       },
-      orderBy: { publishedAt: 'desc' },
-    });
-  }
-
-  async getAssessmentById(id: string, role: UserRoleValue) {
-    return this.getVisibleAssessment({ id }, role);
-  }
-
-  async getAssessmentBySlug(slug: string, role: UserRoleValue) {
-    return this.getVisibleAssessment({ slug }, role);
+    };
   }
 
   async startAttempt(assessmentId: string, userId: string, role: UserRoleValue) {
-    const assessment = await this.getVisibleAssessment({ id: assessmentId }, role);
+    const assessment = await this.getVisibleAssessment({ id: assessmentId }, role, userId);
     if (role === ROLES.GUEST && assessment.code !== GUEST_ASSESSMENT_CODE) {
       throw new ForbiddenError('Guests can only take the General Communication assessment.');
+    }
+    if (assessment.accessTier === 'PREMIUM') {
+      const allowed = await userHasFeature(userId, PLAN_FEATURES.ASSESSMENTS_PREMIUM);
+      if (!allowed) {
+        throw new ForbiddenError(
+          'Premium subscription required for this assessment.',
+          PREMIUM_REQUIRED_ERRORS,
+        );
+      }
     }
 
     const inProgress = await prisma.assessmentAttempt.findFirst({
@@ -316,10 +399,25 @@ export class AssessmentsService {
 
   async getJobReadinessScore(attemptId: string, userId: string, role: UserRoleValue) {
     await this.requireResultsAccess(attemptId, userId, role);
-    return prisma.jobReadinessScore.findUnique({
+    const jrs = await prisma.jobReadinessScore.findUnique({
       where: { attemptId },
       include: { skillScores: { include: { skill: true } } },
     });
+    if (!jrs) return null;
+    trackEvent({ eventName: 'jrs.viewed', userId, properties: { attemptId } });
+    return {
+      overallScore: Number(jrs.overallScore),
+      band: jrs.band,
+      version: jrs.version,
+      calculatedAt: jrs.calculatedAt,
+      skillScores: jrs.skillScores.map((score) => ({
+        skillId: score.skillId,
+        skillCode: score.skill.code,
+        skillName: score.skill.name,
+        score: Number(score.score),
+        weight: Number(score.weight),
+      })),
+    };
   }
 
   async getAiEvaluation(attemptId: string, userId: string, role: UserRoleValue) {
@@ -339,15 +437,15 @@ export class AssessmentsService {
   private async getVisibleAssessment(
     unique: { id: string } | { slug: string },
     role: UserRoleValue,
+    userId?: string,
   ) {
     const assessment = await prisma.assessment.findFirst({
       where: {
         ...unique,
         status: 'PUBLISHED',
-        accessTier: 'FREE',
         isActive: true,
         deletedAt: null,
-        ...(role === ROLES.GUEST ? { code: GUEST_ASSESSMENT_CODE } : {}),
+        ...(role === ROLES.GUEST ? { code: GUEST_ASSESSMENT_CODE, accessTier: 'FREE' } : {}),
       },
       include: {
         category: true,
@@ -358,7 +456,16 @@ export class AssessmentsService {
     if (!assessment) {
       throw new NotFoundError('Assessment not found.');
     }
-    return assessment;
+
+    if (role === ROLES.GUEST) {
+      return { ...assessment, locked: false, upgradeRequired: false };
+    }
+
+    const hasPremium = userId
+      ? await userHasFeature(userId, PLAN_FEATURES.ASSESSMENTS_PREMIUM)
+      : false;
+    const locked = assessment.accessTier === 'PREMIUM' && !hasPremium;
+    return { ...assessment, locked, upgradeRequired: locked };
   }
 
   private async requireOwnedAttempt(attemptId: string, userId: string) {
@@ -384,5 +491,25 @@ export class AssessmentsService {
     return attempt;
   }
 }
+
+const catalogSelect = {
+  id: true,
+  code: true,
+  slug: true,
+  title: true,
+  description: true,
+  instructions: true,
+  accessTier: true,
+  durationMinutes: true,
+  passingScore: true,
+  category: { select: { code: true, name: true } },
+  skills: {
+    select: {
+      weight: true,
+      skill: { select: { code: true, name: true } },
+    },
+  },
+  _count: { select: { questions: true } },
+} as const;
 
 export const assessmentsService = new AssessmentsService();

@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
-import { RestrictedForGuests } from '@/components/guards/restricted-for-guests';
+import { RequireRegistered } from '@/components/guards/require-registered';
+import { ProfileManager } from '@/features/registered/components/profile-manager';
 
 export const metadata: Metadata = {
   title: 'Profile',
 };
 
 export default function ProfilePage(): React.ReactElement {
-  return <RestrictedForGuests areaLabel="Profile" />;
+  return (
+    <RequireRegistered>
+      <ProfileManager />
+    </RequireRegistered>
+  );
 }

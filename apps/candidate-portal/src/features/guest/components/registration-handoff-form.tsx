@@ -53,11 +53,11 @@ export function RegistrationHandoffForm(): React.ReactElement {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           <h1 className="font-display text-3xl font-semibold">You are registered</h1>
           <p className="text-[var(--hf-muted)]">
-            Your guest account is now a HireFast member. The full Registered User experience ships
-            next — for now you can return home.
+            Your guest account is now a HireFast member. Open your dashboard to view unlocked
+            results, progress, and free assessments.
           </p>
-          <Button type="button" onClick={() => router.push('/')}>
-            Back to home
+          <Button type="button" onClick={() => router.push('/dashboard')}>
+            Go to dashboard
           </Button>
         </motion.div>
       </section>

@@ -72,6 +72,6 @@ describe('Guest authentication and assessment access', () => {
         accessTier: 'FREE',
       }),
     ]);
-    expect(mockListAssessments).toHaveBeenCalledWith('GUEST');
+    expect(mockListAssessments).toHaveBeenCalledWith('GUEST', expect.any(String));
   });
 });

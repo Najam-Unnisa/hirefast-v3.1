@@ -18,6 +18,9 @@ assessmentsRouter.post('/:assessmentId/attempts', (req, res, next) =>
 assessmentsRouter.get('/:id', (req, res, next) => assessmentsController.getById(req, res, next));
 
 attemptsRouter.use(...candidateAccess);
+attemptsRouter.get('/me', authorize(ROLES.USER, ROLES.ADMIN), (req, res, next) =>
+  assessmentsController.listMyAttempts(req, res, next),
+);
 attemptsRouter.get('/:attemptId', (req, res, next) =>
   assessmentsController.getAttempt(req, res, next),
 );

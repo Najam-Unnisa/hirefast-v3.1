@@ -1,7 +1,36 @@
 import { prisma } from '../../../config/database';
 import { ROLES } from '../../../constants/roles';
 import { trackEvent } from '../../../services/analytics.service';
-import { BadRequestError, NotFoundError } from '../../../utils/errors';
+import { gamificationService } from '../../../services/gamification.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../../utils/errors';
+import { materializeUnlockedResultsForUser } from '../../assessments/jobs/evaluation.worker';
+
+export interface ProfileUpdateInput {
+  firstName?: string;
+  lastName?: string;
+  displayName?: string;
+  phone?: string | null;
+  headline?: string | null;
+  bio?: string | null;
+  locale?: string | null;
+  timezone?: string | null;
+  countryCode?: string | null;
+  educationSummary?: string | null;
+  skillsSummary?: string | null;
+}
+
+function asOptionalString(value: unknown, field: string, max: number): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string') {
+    throw new BadRequestError(`${field} must be a string.`);
+  }
+  const trimmed = value.trim();
+  if (trimmed.length > max) {
+    throw new BadRequestError(`${field} must be ${max} characters or fewer.`);
+  }
+  return trimmed.length ? trimmed : null;
+}
 
 export class UsersService {
   async getMyProfile(userId: string) {
@@ -18,7 +47,105 @@ export class UsersService {
     if (!user) {
       throw new NotFoundError('User not found.');
     }
-    return user;
+
+    const resume = await prisma.fileObject.findFirst({
+      where: {
+        uploadedById: userId,
+        purpose: 'OTHER',
+        deletedAt: null,
+        OR: [
+          { fileName: { contains: 'resume', mode: 'insensitive' } },
+          { mimeType: 'application/pdf' },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        sizeBytes: true,
+        createdAt: true,
+      },
+    });
+
+    return {
+      ...user,
+      resume: resume
+        ? {
+            ...resume,
+            sizeBytes: Number(resume.sizeBytes),
+          }
+        : null,
+    };
+  }
+
+  async updateMyProfile(userId: string, body: ProfileUpdateInput) {
+    const firstName = asOptionalString(body.firstName, 'firstName', 100);
+    const lastName = asOptionalString(body.lastName, 'lastName', 100);
+    const displayName = asOptionalString(body.displayName, 'displayName', 150);
+    const phone = asOptionalString(body.phone, 'phone', 32);
+    const headline = asOptionalString(body.headline, 'headline', 255);
+    const bio = asOptionalString(body.bio, 'bio', 5000);
+    const locale = asOptionalString(body.locale, 'locale', 16);
+    const timezone = asOptionalString(body.timezone, 'timezone', 64);
+    const countryCode = asOptionalString(body.countryCode, 'countryCode', 2);
+
+    // Education / skills are stored in bio metadata block until dedicated tables exist.
+    const educationSummary = asOptionalString(body.educationSummary, 'educationSummary', 2000);
+    const skillsSummary = asOptionalString(body.skillsSummary, 'skillsSummary', 2000);
+
+    const existing = await prisma.userProfile.findUnique({ where: { userId } });
+    if (!existing) {
+      throw new NotFoundError('Profile not found.');
+    }
+
+    let nextBio = bio !== undefined ? bio : existing.bio;
+    if (educationSummary !== undefined || skillsSummary !== undefined) {
+      const education =
+        educationSummary !== undefined
+          ? educationSummary
+          : extractTagged(existing.bio, 'education');
+      const skills =
+        skillsSummary !== undefined ? skillsSummary : extractTagged(existing.bio, 'skills');
+      const core = bio !== undefined ? bio : stripTagged(existing.bio ?? '');
+      nextBio = composeTaggedBio(core, education, skills);
+    }
+
+    const updated = await prisma.userProfile.update({
+      where: { userId },
+      data: {
+        ...(firstName !== undefined ? { firstName } : {}),
+        ...(lastName !== undefined ? { lastName } : {}),
+        ...(displayName !== undefined
+          ? { displayName }
+          : firstName !== undefined || lastName !== undefined
+            ? {
+                displayName:
+                  `${firstName ?? existing.firstName ?? ''} ${lastName ?? existing.lastName ?? ''}`.trim(),
+              }
+            : {}),
+        ...(phone !== undefined ? { phone } : {}),
+        ...(headline !== undefined ? { headline } : {}),
+        ...(nextBio !== undefined ? { bio: nextBio } : {}),
+        ...(locale !== undefined ? { locale } : {}),
+        ...(timezone !== undefined ? { timezone } : {}),
+        ...(countryCode !== undefined ? { countryCode } : {}),
+      },
+    });
+
+    trackEvent({
+      eventName: 'profile.updated',
+      userId,
+      properties: { fields: Object.keys(body) },
+    });
+
+    await gamificationService.recordDailyActivity(userId).catch(() => undefined);
+
+    return {
+      ...updated,
+      educationSummary: extractTagged(updated.bio, 'education'),
+      skillsSummary: extractTagged(updated.bio, 'skills'),
+    };
   }
 
   async completeProfile(userId: string, firstNameInput: unknown, lastNameInput: unknown) {
@@ -123,6 +250,9 @@ export class UsersService {
       });
     });
 
+    await gamificationService.onProfileCompleted(userId).catch(() => undefined);
+    await materializeUnlockedResultsForUser(userId).catch(() => undefined);
+
     trackEvent({
       eventName: 'guest.profile_completed',
       userId,
@@ -131,6 +261,217 @@ export class UsersService {
     // Caller must refresh the access token (POST /auth/refresh) so JWT role becomes USER.
     return user;
   }
+
+  async attachResume(
+    userId: string,
+    input: { fileName?: string; mimeType?: string; sizeBytes?: number; contentBase64?: string },
+  ) {
+    const fileName = typeof input.fileName === 'string' ? input.fileName.trim() : '';
+    const mimeType = typeof input.mimeType === 'string' ? input.mimeType.trim() : 'application/pdf';
+    const sizeBytes =
+      typeof input.sizeBytes === 'number'
+        ? input.sizeBytes
+        : Buffer.byteLength(input.contentBase64 ?? '', 'base64');
+
+    if (!fileName) {
+      throw new BadRequestError('fileName is required.');
+    }
+    if (sizeBytes <= 0 || sizeBytes > 10 * 1024 * 1024) {
+      throw new BadRequestError('Resume must be between 1 byte and 10MB.');
+    }
+    if (!mimeType.includes('pdf') && mimeType !== 'application/msword') {
+      throw new BadRequestError('Resume must be a PDF or Word document.');
+    }
+
+    // Soft-delete previous resume-like files for this user.
+    await prisma.fileObject.updateMany({
+      where: {
+        uploadedById: userId,
+        purpose: 'OTHER',
+        deletedAt: null,
+        OR: [
+          { fileName: { contains: 'resume', mode: 'insensitive' } },
+          { mimeType: 'application/pdf' },
+        ],
+      },
+      data: { deletedAt: new Date() },
+    });
+
+    const objectKey = `resumes/${userId}/${Date.now()}-${fileName}`;
+    const file = await prisma.fileObject.create({
+      data: {
+        uploadedById: userId,
+        bucket: 'hirefast-local',
+        objectKey,
+        fileName,
+        mimeType,
+        sizeBytes: BigInt(sizeBytes),
+        purpose: 'OTHER',
+        checksum: input.contentBase64 ? String(input.contentBase64.length) : null,
+      },
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        sizeBytes: true,
+        createdAt: true,
+      },
+    });
+
+    trackEvent({
+      eventName: 'resume.uploaded',
+      userId,
+      properties: { fileId: file.id, fileName },
+    });
+
+    return {
+      ...file,
+      sizeBytes: Number(file.sizeBytes),
+    };
+  }
+
+  async getLatestJrs(userId: string) {
+    const jrs = await prisma.jobReadinessScore.findFirst({
+      where: { userId },
+      orderBy: { calculatedAt: 'desc' },
+      include: {
+        skillScores: {
+          include: { skill: { select: { id: true, code: true, name: true } } },
+          orderBy: { score: 'desc' },
+        },
+        attempt: {
+          select: {
+            id: true,
+            assessment: { select: { title: true, slug: true } },
+          },
+        },
+      },
+    });
+    if (!jrs) {
+      return null;
+    }
+    trackEvent({ eventName: 'jrs.viewed', userId, properties: { jrsId: jrs.id } });
+    return {
+      overallScore: Number(jrs.overallScore),
+      band: jrs.band,
+      version: jrs.version,
+      calculatedAt: jrs.calculatedAt,
+      attemptId: jrs.attemptId,
+      assessmentTitle: jrs.attempt.assessment.title,
+      skillScores: jrs.skillScores.map((score) => ({
+        skillId: score.skillId,
+        skillCode: score.skill.code,
+        skillName: score.skill.name,
+        score: Number(score.score),
+        weight: Number(score.weight),
+      })),
+    };
+  }
+
+  async listMyReports(userId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      prisma.aiReport.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          attempt: {
+            select: { id: true, assessment: { select: { title: true, slug: true } } },
+          },
+        },
+      }),
+      prisma.aiReport.count({ where: { userId } }),
+    ]);
+
+    return {
+      items: items.map((report) => ({
+        id: report.id,
+        title: report.title,
+        status: report.status,
+        summary: report.summary,
+        generatedAt: report.generatedAt,
+        attemptId: report.attemptId,
+        assessmentTitle: report.attempt?.assessment.title ?? null,
+      })),
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
+
+  async getReport(userId: string, reportId: string, role: string) {
+    const report = await prisma.aiReport.findFirst({
+      where: {
+        id: reportId,
+        ...(role === ROLES.ADMIN ? {} : { userId }),
+      },
+      include: {
+        sections: { orderBy: { sortOrder: 'asc' } },
+        attempt: {
+          select: {
+            id: true,
+            resultsLocked: true,
+            assessment: { select: { title: true, slug: true } },
+          },
+        },
+      },
+    });
+    if (!report) {
+      throw new NotFoundError('Report not found.');
+    }
+    if (report.attempt?.resultsLocked) {
+      throw new ForbiddenError('Assessment results are locked.', [
+        { code: 'RESULTS_LOCKED', message: 'Complete your profile to unlock assessment results.' },
+      ]);
+    }
+    trackEvent({ eventName: 'ai_report.viewed', userId, properties: { reportId } });
+    return report;
+  }
+
+  async listRecommendations(userId: string) {
+    const items = await prisma.learningRecommendation.findMany({
+      where: { userId, isDismissed: false, deletedAt: null },
+      include: { skill: { select: { code: true, name: true } } },
+      orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
+    });
+    trackEvent({
+      eventName: 'learning_recommendations.viewed',
+      userId,
+      properties: { count: items.length },
+    });
+    return items;
+  }
+}
+
+function extractTagged(bio: string | null | undefined, tag: 'education' | 'skills'): string | null {
+  if (!bio) return null;
+  const match = bio.match(new RegExp(`\\[${tag}\\]([\\s\\S]*?)\\[/${tag}\\]`, 'i'));
+  return match?.[1]?.trim() || null;
+}
+
+function stripTagged(bio: string): string {
+  return bio
+    .replace(/\[education\][\s\S]*?\[\/education\]/gi, '')
+    .replace(/\[skills\][\s\S]*?\[\/skills\]/gi, '')
+    .trim();
+}
+
+function composeTaggedBio(
+  core: string | null,
+  education: string | null,
+  skills: string | null,
+): string {
+  const parts = [core?.trim() || ''];
+  if (education) parts.push(`[education]${education}[/education]`);
+  if (skills) parts.push(`[skills]${skills}[/skills]`);
+  return parts.filter(Boolean).join('\n\n');
 }
 
 export const usersService = new UsersService();

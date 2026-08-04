@@ -12,6 +12,7 @@ import {
   LoadingSpinner,
 } from '@hirefast/shared-ui';
 import { saveAttemptId } from '@/lib/session';
+import { useSession } from '@/providers/session-provider';
 import {
   getAttempt,
   getQuestions,
@@ -33,6 +34,7 @@ interface AssessmentPlayerProps {
 
 export function AssessmentPlayer({ attemptId }: AssessmentPlayerProps): React.ReactElement {
   const router = useRouter();
+  const { isGuest } = useSession();
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [index, setIndex] = useState(0);
@@ -53,6 +55,11 @@ export function AssessmentPlayer({ attemptId }: AssessmentPlayerProps): React.Re
           getQuestions(attemptId),
         ]);
 
+        if (attempt.status === 'COMPLETED' && !isGuest && !attempt.resultsLocked) {
+          router.replace(`/assessment/${attemptId}/results`);
+          return;
+        }
+
         if (
           attempt.status === 'SUBMITTED' ||
           attempt.status === 'EVALUATING' ||
@@ -62,7 +69,7 @@ export function AssessmentPlayer({ attemptId }: AssessmentPlayerProps): React.Re
           return;
         }
         if (attempt.status !== 'IN_PROGRESS') {
-          router.replace('/welcome');
+          router.replace(isGuest ? '/welcome' : '/assessments');
           return;
         }
 
@@ -93,7 +100,7 @@ export function AssessmentPlayer({ attemptId }: AssessmentPlayerProps): React.Re
     return () => {
       cancelled = true;
     };
-  }, [attemptId, router]);
+  }, [attemptId, router, isGuest]);
 
   useEffect(() => {
     const timers = saveTimers.current;

@@ -8,7 +8,7 @@ export class AssessmentsController {
     try {
       sendSuccess(
         res,
-        await assessmentsService.listAssessments(req.user!.role),
+        await assessmentsService.listAssessments(req.user!.role, req.user!.sub),
         'Assessments retrieved.',
       );
     } catch (error) {
@@ -20,7 +20,7 @@ export class AssessmentsController {
     try {
       sendSuccess(
         res,
-        await assessmentsService.getAssessmentById(req.params.id, req.user!.role),
+        await assessmentsService.getAssessmentById(req.params.id, req.user!.role, req.user!.sub),
         'Assessment retrieved.',
       );
     } catch (error) {
@@ -32,8 +32,32 @@ export class AssessmentsController {
     try {
       sendSuccess(
         res,
-        await assessmentsService.getAssessmentBySlug(req.params.slug, req.user!.role),
+        await assessmentsService.getAssessmentBySlug(
+          req.params.slug,
+          req.user!.role,
+          req.user!.sub,
+        ),
         'Assessment retrieved.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listMyAttempts(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await assessmentsService.listMyAttempts(req.user!.sub, {
+          page: Number(req.query.page ?? 1),
+          limit: Number(req.query.limit ?? 20),
+          status: typeof req.query.status === 'string' ? req.query.status : undefined,
+        }),
+        'Assessment history retrieved.',
       );
     } catch (error) {
       next(error);

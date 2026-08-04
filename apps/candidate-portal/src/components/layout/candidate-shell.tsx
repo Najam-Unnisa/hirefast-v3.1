@@ -11,6 +11,7 @@ export function CandidateShell({ children }: { children: React.ReactNode }): Rea
   const pathname = usePathname();
   const { user, isGuest, status, signOut } = useSession();
   const minimal = MINIMAL_SHELL_PATHS.has(pathname);
+  const registered = status === 'authenticated' && !isGuest;
 
   return (
     <div className="flex min-h-screen flex-col bg-transparent text-[var(--hf-foreground)]">
@@ -21,9 +22,9 @@ export function CandidateShell({ children }: { children: React.ReactNode }): Rea
             : 'border-b border-[var(--hf-border)] bg-[var(--hf-card)]/80 backdrop-blur'
         }
       >
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link
-            href="/"
+            href={registered ? '/dashboard' : '/'}
             className={`font-display text-xl font-semibold tracking-tight ${
               minimal ? 'text-white' : 'text-[var(--hf-foreground)]'
             }`}
@@ -32,26 +33,52 @@ export function CandidateShell({ children }: { children: React.ReactNode }): Rea
           </Link>
           <nav
             aria-label="Primary"
-            className={`flex items-center gap-4 text-sm ${
+            className={`flex flex-wrap items-center justify-end gap-3 text-sm ${
               minimal ? 'text-white/80' : 'text-[var(--hf-muted)]'
             }`}
           >
             {status === 'authenticated' && isGuest ? (
               <>
-                <Link href="/welcome" className="hover:opacity-100 opacity-90">
+                <Link href="/welcome" className="opacity-90 hover:opacity-100">
                   Welcome
                 </Link>
                 <button
                   type="button"
                   onClick={() => void signOut()}
-                  className="hover:opacity-100 opacity-90"
+                  className="opacity-90 hover:opacity-100"
                 >
                   Sign out
                 </button>
               </>
             ) : null}
-            {status === 'authenticated' && !isGuest && user ? (
-              <span className="truncate max-w-[12rem]">{user.email}</span>
+            {registered ? (
+              <>
+                <Link href="/dashboard" className="opacity-90 hover:opacity-100">
+                  Dashboard
+                </Link>
+                <Link href="/assessments" className="opacity-90 hover:opacity-100">
+                  Assessments
+                </Link>
+                <Link href="/history" className="opacity-90 hover:opacity-100">
+                  History
+                </Link>
+                <Link href="/reports" className="opacity-90 hover:opacity-100">
+                  Reports
+                </Link>
+                <Link href="/profile" className="opacity-90 hover:opacity-100">
+                  Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void signOut()}
+                  className="opacity-90 hover:opacity-100"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : null}
+            {status === 'authenticated' && user && !isGuest && !registered ? (
+              <span className="max-w-[12rem] truncate">{user.email}</span>
             ) : null}
           </nav>
         </div>
