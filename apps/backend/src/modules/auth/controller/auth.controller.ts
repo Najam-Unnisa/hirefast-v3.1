@@ -19,7 +19,11 @@ export class AuthController {
         typeof req.query.code === 'string' ? req.query.code : undefined,
         typeof req.query.state === 'string' ? req.query.state : undefined,
       );
-      const query = new URLSearchParams(tokens);
+      const query = new URLSearchParams({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: tokens.expiresIn,
+      });
       res.redirect(`${env.appUrl}/auth/callback?${query.toString()}`);
     } catch (error) {
       next(error);
