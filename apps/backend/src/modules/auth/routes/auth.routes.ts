@@ -18,6 +18,7 @@ authRouter.get('/session', authenticate, (req, res, next) =>
 
 if (!env.isProduction) {
   authRouter.post('/dev/guest', (req, res, next) => authController.devGuestLogin(req, res, next));
+  authRouter.post('/dev/admin', (req, res, next) => authController.devAdminLogin(req, res, next));
 }
 
 export { authRouter };

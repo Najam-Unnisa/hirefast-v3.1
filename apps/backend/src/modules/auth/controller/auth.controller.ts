@@ -5,9 +5,11 @@ import { sendSuccess } from '../../../utils/api-response';
 import { authService } from '../service/auth.service';
 
 export class AuthController {
-  async startGoogleAuth(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  async startGoogleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      sendSuccess(res, await authService.startGoogleAuth(), 'Google authorization started.');
+      const portal =
+        req.body?.portal === 'admin' || req.query?.portal === 'admin' ? 'admin' : 'candidate';
+      sendSuccess(res, await authService.startGoogleAuth(portal), 'Google authorization started.');
     } catch (error) {
       next(error);
     }
@@ -15,7 +17,7 @@ export class AuthController {
 
   async googleCallback(req: Request, res: Response, _next: NextFunction): Promise<void> {
     try {
-      const tokens = await authService.handleGoogleCallback(
+      const { tokens, portal } = await authService.handleGoogleCallback(
         typeof req.query.code === 'string' ? req.query.code : undefined,
         typeof req.query.state === 'string' ? req.query.state : undefined,
       );
@@ -24,15 +26,20 @@ export class AuthController {
         refreshToken: tokens.refreshToken,
         expiresIn: tokens.expiresIn,
       });
-      res.redirect(`${env.appUrl}/auth/callback#${query.toString()}`);
+      const baseUrl = portal === 'admin' ? env.adminUrl : env.appUrl;
+      res.redirect(`${baseUrl}/auth/callback#${query.toString()}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google authentication failed.';
       const query = new URLSearchParams({
         error: 'google_auth_failed',
         message,
       });
+      const referer = typeof req.get === 'function' ? (req.get('referer') ?? '') : '';
+      const towardAdmin =
+        message.toLowerCase().includes('administrator') || referer.startsWith(env.adminUrl);
+      const baseUrl = towardAdmin ? env.adminUrl : env.appUrl;
       // Errors may stay in query (non-secret); success tokens use the URL fragment only.
-      res.redirect(`${env.appUrl}/auth/callback?${query.toString()}`);
+      res.redirect(`${baseUrl}/auth/callback?${query.toString()}`);
     }
   }
 
@@ -74,6 +81,19 @@ export class AuthController {
         res,
         await authService.devGuestLogin(req.body?.email),
         'Development guest session created.',
+        201,
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async devAdminLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await authService.devAdminLogin(req.body?.email),
+        'Development admin session created.',
         201,
       );
     } catch (error) {

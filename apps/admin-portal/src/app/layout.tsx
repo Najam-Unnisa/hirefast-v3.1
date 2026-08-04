@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Fraunces } from 'next/font/google';
-import { AppProviders, AppShell } from '@hirefast/shared-ui';
+import { AppProviders } from '@hirefast/shared-ui';
 import { APP_DESCRIPTION, APP_NAME } from '@/constants/app';
+import { AdminShell } from '@/components/layout/admin-shell';
+import { SessionProvider } from '@/providers/session-provider';
 import './globals.css';
 
 const dmSans = DM_Sans({
@@ -18,8 +20,8 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: APP_NAME,
-    template: `%s · ${APP_NAME}`,
+    default: `${APP_NAME} Admin`,
+    template: `%s · ${APP_NAME} Admin`,
   },
   description: APP_DESCRIPTION,
 };
@@ -33,9 +35,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${dmSans.variable} ${fraunces.variable} antialiased`}>
         <AppProviders>
-          <AppShell appName={APP_NAME} portalLabel="Admin Portal">
-            {children}
-          </AppShell>
+          <SessionProvider>
+            <AdminShell>{children}</AdminShell>
+          </SessionProvider>
         </AppProviders>
       </body>
     </html>
