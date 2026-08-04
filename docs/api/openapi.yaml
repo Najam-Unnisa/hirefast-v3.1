@@ -1,0 +1,3715 @@
+openapi: 3.0.3
+info:
+  title: HireFast API
+  version: 1.0.0
+  description: |
+    HireFast AI-powered employability assessment platform API contract (v1).
+
+    This specification is the **normative API contract**. It does not include
+    implementation. Base path: `/api/v1`.
+
+    Related docs: `docs/api/ARCHITECTURE.md`, `ENDPOINT_CATALOG.md`, `STANDARDS.md`, `AUTH_MATRIX.md`.
+  contact:
+    name: HireFast Engineering
+servers:
+  - url: http://localhost:4000/api/v1
+    description: Local development
+  - url: https://api.hirefast.example/api/v1
+    description: Production (example)
+tags:
+  - name: Health
+  - name: Auth
+  - name: Users
+  - name: Profiles
+  - name: Files
+  - name: AssessmentCategories
+  - name: Assessments
+  - name: Attempts
+  - name: Evaluation
+  - name: Reports
+  - name: Dashboard
+  - name: Gamification
+  - name: Notifications
+  - name: Subscriptions
+  - name: Premium
+  - name: Settings
+  - name: AdminUsers
+  - name: AdminAssessments
+  - name: AdminAnalytics
+  - name: AdminSettings
+  - name: AdminAudit
+  - name: HrReviews
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Versioned health check
+      security: []
+      operationId: getHealth
+      responses:
+        '200':
+          description: Health payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessHealth'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Start Google OAuth
+      security: []
+      operationId: startGoogleAuth
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                redirectUri:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Authorization URL issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessGoogleStart'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/google/callback:
+    get:
+      tags: [Auth]
+      summary: Google OAuth callback
+      security: []
+      operationId: googleAuthCallback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tokens issued (JSON clients)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAuthTokens'
+        '302':
+          description: Redirect to app with tokens/code (browser flow)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      security: []
+      operationId: refreshTokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Rotated tokens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAuthTokens'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate refresh session
+      operationId: logout
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/OkEmptyData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current authenticated user
+      operationId: getAuthMe
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessCurrentUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/session:
+    get:
+      tags: [Auth]
+      summary: Validate access session
+      operationId: getAuthSession
+      responses:
+        '200':
+          description: Session validity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/rbac:
+    get:
+      tags: [Auth]
+      summary: Effective permissions for current user
+      operationId: getAuthRbac
+      responses:
+        '200':
+          description: Role and permission codes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessRbac'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Current user resource
+      operationId: getUsersMe
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessCurrentUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/me/profile:
+    get:
+      tags: [Profiles]
+      summary: Get profile
+      operationId: getMyProfile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      tags: [Profiles]
+      summary: Replace profile
+      operationId: putMyProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    patch:
+      tags: [Profiles]
+      summary: Patch profile
+      operationId: patchMyProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /users/me/profile/complete:
+    post:
+      tags: [Profiles]
+      summary: Complete profile registration
+      operationId: completeMyProfile
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileWrite'
+      responses:
+        '200':
+          description: Profile marked complete; role may become FREEMIUM
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /users/me/preferences:
+    get:
+      tags: [Profiles]
+      summary: Get user preferences
+      operationId: getMyPreferences
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [Profiles]
+      summary: Update preferences
+      operationId: patchMyPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /users/me/avatar:
+    get:
+      tags: [Profiles]
+      summary: Avatar file metadata
+      operationId: getMyAvatar
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFileMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Profiles]
+      summary: Attach avatar by fileId
+      operationId: putMyAvatar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileId]
+              properties:
+                fileId:
+                  $ref: '#/components/schemas/UUID'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFileMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /users/me/resume:
+    get:
+      tags: [Profiles]
+      summary: Resume file metadata
+      operationId: getMyResume
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFileMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Profiles]
+      summary: Attach resume by fileId
+      operationId: putMyResume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileId]
+              properties:
+                fileId:
+                  $ref: '#/components/schemas/UUID'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFileMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /files/uploads:
+    post:
+      tags: [Files]
+      summary: Initiate file upload
+      operationId: initiateFileUpload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileUploadInit'
+          multipart/form-data:
+            schema:
+              type: object
+              required: [purpose, file]
+              properties:
+                purpose:
+                  $ref: '#/components/schemas/FilePurpose'
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Upload initiated or stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFileUpload'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /files/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    get:
+      tags: [Files]
+      summary: Get file metadata
+      operationId: getFile
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFileMeta'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Files]
+      summary: Soft-delete file metadata
+      operationId: deleteFile
+      responses:
+        '200':
+          $ref: '#/components/responses/OkEmptyData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assessment-categories:
+    get:
+      tags: [AssessmentCategories]
+      summary: List assessment categories
+      operationId: listAssessmentCategories
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessCategoryList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /assessments:
+    get:
+      tags: [Assessments]
+      summary: Assessment catalog
+      operationId: listAssessments
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortOrder'
+        - $ref: '#/components/parameters/QueryQ'
+        - name: categoryId
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: accessTier
+          in: query
+          schema:
+            $ref: '#/components/schemas/AssessmentAccessTier'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AssessmentStatus'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /assessments/{assessmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    get:
+      tags: [Assessments]
+      summary: Assessment detail
+      operationId: getAssessment
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assessments/slug/{slug}:
+    parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Assessments]
+      summary: Assessment detail by slug
+      operationId: getAssessmentBySlug
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /assessments/{assessmentId}/attempts:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    post:
+      tags: [Attempts]
+      summary: Start or resume assessment attempt
+      operationId: startAttempt
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resumeIfInProgress:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAttempt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attempts/me:
+    get:
+      tags: [Attempts]
+      summary: My assessment history
+      operationId: listMyAttempts
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortOrder'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AttemptStatus'
+        - name: assessmentId
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAttemptPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /attempts/{attemptId}:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Attempts]
+      summary: Attempt summary
+      operationId: getAttempt
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAttempt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attempts/{attemptId}/status:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Attempts]
+      summary: Attempt status poll
+      operationId: getAttemptStatus
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAttemptStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attempts/{attemptId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Attempts]
+      summary: Questions for attempt player (no correct flags)
+      operationId: getAttemptQuestions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPlayerQuestions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attempts/{attemptId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    patch:
+      tags: [Attempts]
+      summary: Autosave responses
+      operationId: autosaveResponses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponsesBatchWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAutosave'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /attempts/{attemptId}/responses/{questionId}:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+      - $ref: '#/components/parameters/QuestionId'
+    put:
+      tags: [Attempts]
+      summary: Upsert single response
+      operationId: upsertResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponseWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAutosave'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /attempts/{attemptId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    post:
+      tags: [Attempts]
+      summary: Submit attempt
+      operationId: submitAttempt
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAttempt'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /attempts/{attemptId}/evaluation:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    post:
+      tags: [Evaluation]
+      summary: Trigger backend evaluation
+      operationId: triggerEvaluation
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessEvaluation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    get:
+      tags: [Evaluation]
+      summary: Get deterministic evaluation
+      operationId: getEvaluation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessEvaluation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attempts/{attemptId}/evaluation/skills:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Evaluation]
+      summary: Evaluation skill scores
+      operationId: getEvaluationSkills
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessSkillScoreList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /attempts/{attemptId}/jrs:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Evaluation]
+      summary: Job Readiness Score for attempt
+      operationId: getAttemptJrs
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessJrs'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/me/jrs/latest:
+    get:
+      tags: [Evaluation]
+      summary: Latest Job Readiness Score
+      operationId: getLatestJrs
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessJrs'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /attempts/{attemptId}/ai-evaluation:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Evaluation]
+      summary: AI qualitative evaluation
+      operationId: getAiEvaluation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAiEvaluation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /attempts/{attemptId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      tags: [Reports]
+      summary: List reports for attempt
+      operationId: listAttemptReports
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReportList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Reports]
+      summary: Request AI report generation
+      operationId: createAttemptReport
+      responses:
+        '202':
+          description: Accepted for async generation (envelope still used with 200 or 202)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReport'
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /reports/{reportId}:
+    parameters:
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      tags: [Reports]
+      summary: Report detail with sections
+      operationId: getReport
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReport'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/me/reports:
+    get:
+      tags: [Reports]
+      summary: My report history
+      operationId: listMyReports
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReportStatus'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReportPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /users/me/recommendations:
+    get:
+      tags: [Premium]
+      summary: Learning recommendations
+      operationId: listMyRecommendations
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessRecommendationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /users/me/recommendations/{recommendationId}/dismiss:
+    parameters:
+      - name: recommendationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/UUID'
+    patch:
+      tags: [Premium]
+      summary: Dismiss recommendation
+      operationId: dismissRecommendation
+      responses:
+        '200':
+          $ref: '#/components/responses/OkEmptyData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /dashboard/me:
+    get:
+      tags: [Dashboard]
+      summary: Candidate dashboard summary
+      operationId: getMyDashboard
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessDashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard/me/activity:
+    get:
+      tags: [Dashboard]
+      summary: Recent activity
+      operationId: getMyDashboardActivity
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessActivityPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard/me/progress:
+    get:
+      tags: [Dashboard]
+      summary: Assessment progress
+      operationId: getMyDashboardProgress
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessProgress'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /dashboard/me/stats:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard statistics
+      operationId: getMyDashboardStats
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessStats'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/me:
+    get:
+      tags: [Gamification]
+      summary: My gamification summary
+      operationId: getMyGamification
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessGamification'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/me/xp:
+    get:
+      tags: [Gamification]
+      summary: XP transaction ledger
+      operationId: listMyXp
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessXpPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/me/badges:
+    get:
+      tags: [Gamification]
+      summary: My earned badges
+      operationId: listMyBadges
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessUserBadgePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/me/streak:
+    get:
+      tags: [Gamification]
+      summary: Daily streak detail
+      operationId: getMyStreak
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessStreak'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/badges:
+    get:
+      tags: [Gamification]
+      summary: Badge catalog
+      operationId: listBadges
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessBadgeList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/levels:
+    get:
+      tags: [Gamification]
+      summary: Level ladder
+      operationId: listLevels
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessLevelList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /gamification/leaderboard:
+    get:
+      tags: [Gamification]
+      summary: Leaderboard (future-ready)
+      operationId: getLeaderboard
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Empty when feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessLeaderboardPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Notification inbox
+      operationId: listNotifications
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: isRead
+          in: query
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/NotificationType'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNotificationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Unread notification count
+      operationId: getUnreadNotificationCount
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessUnreadCount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /notifications/{notificationId}/read:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/UUID'
+    patch:
+      tags: [Notifications]
+      summary: Mark notification read
+      operationId: markNotificationRead
+      responses:
+        '200':
+          $ref: '#/components/responses/OkEmptyData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all notifications read
+      operationId: markAllNotificationsRead
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessUnreadCount'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Notification preferences
+      operationId: getNotificationPreferences
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags: [Notifications]
+      summary: Update notification preferences
+      operationId: patchNotificationPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreferencesWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /subscriptions/plans:
+    get:
+      tags: [Subscriptions]
+      summary: Subscription plan catalog
+      operationId: listSubscriptionPlans
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPlanList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /subscriptions/me:
+    get:
+      tags: [Subscriptions]
+      summary: My subscription
+      operationId: getMySubscription
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessSubscription'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /subscriptions/me/features:
+    get:
+      tags: [Subscriptions]
+      summary: Effective feature flags
+      operationId: getMyFeatures
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFeatureList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /subscriptions/me/validate-feature:
+    post:
+      tags: [Subscriptions]
+      summary: Validate a feature key
+      operationId: validateFeature
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [featureKey]
+              properties:
+                featureKey:
+                  type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessFeatureValidation'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /premium/assessments:
+    get:
+      tags: [Premium]
+      summary: Premium assessment catalog
+      operationId: listPremiumAssessments
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /premium/reports:
+    get:
+      tags: [Premium]
+      summary: Premium reports
+      operationId: listPremiumReports
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReportPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /premium/recommendations:
+    get:
+      tags: [Premium]
+      summary: Premium learning recommendations
+      operationId: listPremiumRecommendations
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessRecommendationPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /settings/public:
+    get:
+      tags: [Settings]
+      summary: Public platform settings
+      security: []
+      operationId: getPublicSettings
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPublicSettings'
+
+  # ----- Admin -----
+  /admin/users:
+    get:
+      tags: [AdminUsers]
+      summary: List candidates/users
+      operationId: adminListUsers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/QueryQ'
+        - $ref: '#/components/parameters/SortBy'
+        - $ref: '#/components/parameters/SortOrder'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessUserPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [AdminUsers]
+      summary: Admin user detail
+      operationId: adminGetUser
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [AdminUsers]
+      summary: Update user status/role
+      operationId: adminPatchUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  $ref: '#/components/schemas/UserStatus'
+                role:
+                  $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/users/{userId}/attempts:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [AdminUsers]
+      summary: Admin list user attempts
+      operationId: adminListUserAttempts
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAttemptPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users/{userId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    get:
+      tags: [AdminUsers]
+      summary: Admin list user reports
+      operationId: adminListUserReports
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReportPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/assessments:
+    get:
+      tags: [AdminAssessments]
+      summary: Admin list assessments
+      operationId: adminListAssessments
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/QueryQ'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessmentPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [AdminAssessments]
+      summary: Create assessment
+      operationId: adminCreateAssessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessmentWrite'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/assessments/{assessmentId}:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    get:
+      tags: [AdminAssessments]
+      summary: Admin assessment detail
+      operationId: adminGetAssessment
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [AdminAssessments]
+      summary: Update assessment
+      operationId: adminUpdateAssessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssessmentWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/assessments/{assessmentId}/status:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    patch:
+      tags: [AdminAssessments]
+      summary: Publish or archive assessment
+      operationId: adminPatchAssessmentStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/AssessmentStatus'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAssessment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/assessments/{assessmentId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/AssessmentId'
+    get:
+      tags: [AdminAssessments]
+      summary: Question bank for assessment
+      operationId: adminListQuestions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessQuestionPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [AdminAssessments]
+      summary: Create question
+      operationId: adminCreateQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionWrite'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessQuestion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/questions/{questionId}:
+    parameters:
+      - $ref: '#/components/parameters/QuestionId'
+    put:
+      tags: [AdminAssessments]
+      summary: Update question
+      operationId: adminUpdateQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessQuestion'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [AdminAssessments]
+      summary: Soft-delete question
+      operationId: adminDeleteQuestion
+      responses:
+        '200':
+          $ref: '#/components/responses/OkEmptyData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/questions/{questionId}/options:
+    parameters:
+      - $ref: '#/components/parameters/QuestionId'
+    post:
+      tags: [AdminAssessments]
+      summary: Add question option
+      operationId: adminCreateOption
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionOptionWrite'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessQuestionOption'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/question-options/{optionId}:
+    parameters:
+      - name: optionId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/UUID'
+    put:
+      tags: [AdminAssessments]
+      summary: Update option
+      operationId: adminUpdateOption
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionOptionWrite'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessQuestionOption'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      tags: [AdminAssessments]
+      summary: Delete option
+      operationId: adminDeleteOption
+      responses:
+        '200':
+          $ref: '#/components/responses/OkEmptyData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/reports:
+    get:
+      tags: [AdminAssessments]
+      summary: Admin list all reports
+      operationId: adminListReports
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReportStatus'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessReportPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/analytics/overview:
+    get:
+      tags: [AdminAnalytics]
+      summary: Analytics KPI overview
+      operationId: adminAnalyticsOverview
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAnalyticsOverview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/analytics/events:
+    get:
+      tags: [AdminAnalytics]
+      summary: Analytics event stream
+      operationId: adminListAnalyticsEvents
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: eventName
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAnalyticsEventPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [AdminAnalytics]
+      summary: Ingest analytics event
+      operationId: adminIngestAnalyticsEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyticsEventWrite'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAnalyticsEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/settings:
+    get:
+      tags: [AdminSettings]
+      summary: List all platform settings
+      operationId: adminListSettings
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessSettingsList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/settings/{key}:
+    parameters:
+      - name: key
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [AdminSettings]
+      summary: Upsert platform setting
+      operationId: adminUpsertSetting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value: {}
+                description:
+                  type: string
+                isPublic:
+                  type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessSetting'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/audit-logs:
+    get:
+      tags: [AdminAudit]
+      summary: Audit log trail
+      operationId: adminListAuditLogs
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: actorId
+          in: query
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: resourceType
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessAuditLogPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/hr-reviews:
+    get:
+      tags: [HrReviews]
+      summary: HR review queue
+      operationId: adminListHrReviews
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/HrReviewStatus'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessHrReviewPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [HrReviews]
+      summary: Create HR review
+      operationId: adminCreateHrReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [attemptId]
+              properties:
+                attemptId:
+                  $ref: '#/components/schemas/UUID'
+                notes:
+                  type: string
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessHrReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/hr-reviews/{reviewId}:
+    parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/UUID'
+    get:
+      tags: [HrReviews]
+      summary: HR review detail
+      operationId: adminGetHrReview
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessHrReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [HrReviews]
+      summary: Update HR review decision
+      operationId: adminPatchHrReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  $ref: '#/components/schemas/HrReviewStatus'
+                notes:
+                  type: string
+                reviewerId:
+                  $ref: '#/components/schemas/UUID'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessHrReview'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    SortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string
+    SortOrder:
+      name: sortOrder
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+    QueryQ:
+      name: q
+      in: query
+      schema:
+        type: string
+        maxLength: 200
+    From:
+      name: from
+      in: query
+      schema:
+        type: string
+        format: date-time
+    To:
+      name: to
+      in: query
+      schema:
+        type: string
+        format: date-time
+    IdempotencyKey:
+      name: X-Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    AssessmentId:
+      name: assessmentId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    AttemptId:
+      name: attemptId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    QuestionId:
+      name: questionId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/UUID'
+
+  responses:
+    OkEmptyData:
+      description: Success with empty object data
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApiSuccessBase'
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: false
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ServiceUnavailable:
+      description: Dependency unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  schemas:
+    UUID:
+      type: string
+      format: uuid
+    ApiSuccessBase:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+        data: {}
+    ApiErrorDetail:
+      type: object
+      required: [message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+        code:
+          type: string
+    ApiError:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiErrorDetail'
+    PaginatedMeta:
+      type: object
+      required: [page, limit, total, totalPages, hasNextPage, hasPreviousPage]
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPreviousPage:
+          type: boolean
+        featureEnabled:
+          type: boolean
+          description: Optional feature flag for future endpoints
+
+    UserRole:
+      type: string
+      enum: [ADMIN, GUEST, FREEMIUM, PREMIUM]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, SUSPENDED, PENDING_REGISTRATION]
+    AssessmentStatus:
+      type: string
+      enum: [DRAFT, PUBLISHED, ARCHIVED]
+    AssessmentAccessTier:
+      type: string
+      enum: [FREE, PREMIUM]
+    AttemptStatus:
+      type: string
+      enum: [IN_PROGRESS, SUBMITTED, EVALUATING, COMPLETED, FAILED, ABANDONED]
+    EvaluationStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+    ReportStatus:
+      type: string
+      enum: [PENDING, GENERATING, READY, FAILED]
+    NotificationType:
+      type: string
+      enum: [SYSTEM, ASSESSMENT, GAMIFICATION, SUBSCRIPTION, HR_REVIEW, LEARNING]
+    FilePurpose:
+      type: string
+      enum: [AVATAR, ASSESSMENT_MEDIA, RESPONSE_ATTACHMENT, REPORT_ASSET, OTHER]
+    HrReviewStatus:
+      type: string
+      enum: [PENDING, IN_REVIEW, APPROVED, REJECTED, NEEDS_CHANGES]
+    QuestionType:
+      type: string
+      enum:
+        - MULTIPLE_CHOICE
+        - MULTI_SELECT
+        - TRUE_FALSE
+        - SHORT_TEXT
+        - LONG_TEXT
+        - AUDIO
+        - VIDEO
+        - FILE_UPLOAD
+        - RATING
+
+    AuthTokens:
+      type: object
+      required: [accessToken, refreshToken, expiresIn, tokenType]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: string
+          example: 15m
+        tokenType:
+          type: string
+          example: Bearer
+    CurrentUser:
+      type: object
+      required: [id, email, role, status, emailVerified, profile]
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        emailVerified:
+          type: boolean
+        profile:
+          type: object
+          properties:
+            isComplete:
+              type: boolean
+            displayName:
+              type: string
+              nullable: true
+            avatarUrl:
+              type: string
+              nullable: true
+        subscription:
+          type: object
+          nullable: true
+          properties:
+            planCode:
+              type: string
+            status:
+              type: string
+    Profile:
+      type: object
+      properties:
+        userId:
+          $ref: '#/components/schemas/UUID'
+        firstName:
+          type: string
+          nullable: true
+        lastName:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        headline:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        locale:
+          type: string
+          nullable: true
+        timezone:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+          nullable: true
+        isComplete:
+          type: boolean
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+    ProfileWrite:
+      type: object
+      properties:
+        firstName:
+          type: string
+          maxLength: 100
+        lastName:
+          type: string
+          maxLength: 100
+        displayName:
+          type: string
+          maxLength: 150
+        phone:
+          type: string
+          maxLength: 32
+        headline:
+          type: string
+          maxLength: 255
+        bio:
+          type: string
+        locale:
+          type: string
+        timezone:
+          type: string
+        countryCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+    Preferences:
+      type: object
+      properties:
+        inAppEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        assessmentAlerts:
+          type: boolean
+        gamificationAlerts:
+          type: boolean
+        marketingEmails:
+          type: boolean
+    PreferencesWrite:
+      type: object
+      properties:
+        inAppEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        assessmentAlerts:
+          type: boolean
+        gamificationAlerts:
+          type: boolean
+        marketingEmails:
+          type: boolean
+    FileMeta:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        fileName:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        purpose:
+          $ref: '#/components/schemas/FilePurpose'
+        url:
+          type: string
+          nullable: true
+    FileUploadInit:
+      type: object
+      required: [purpose, fileName, mimeType, sizeBytes]
+      properties:
+        mode:
+          type: string
+          enum: [presign, multipart]
+          default: presign
+        purpose:
+          $ref: '#/components/schemas/FilePurpose'
+        fileName:
+          type: string
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+    Assessment:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        code:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        instructions:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/AssessmentStatus'
+        accessTier:
+          $ref: '#/components/schemas/AssessmentAccessTier'
+        durationMinutes:
+          type: integer
+          nullable: true
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        categoryName:
+          type: string
+    AssessmentWrite:
+      type: object
+      required: [categoryId, code, slug, title, accessTier]
+      properties:
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        code:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        instructions:
+          type: string
+        accessTier:
+          $ref: '#/components/schemas/AssessmentAccessTier'
+        durationMinutes:
+          type: integer
+        passingScore:
+          type: number
+        maxAttempts:
+          type: integer
+        skillIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/UUID'
+    Attempt:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        assessmentId:
+          $ref: '#/components/schemas/UUID'
+        attemptNumber:
+          type: integer
+        status:
+          $ref: '#/components/schemas/AttemptStatus'
+        startedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resultsLocked:
+          type: boolean
+        assessmentTitle:
+          type: string
+    ResponseWrite:
+      type: object
+      properties:
+        selectedOptionId:
+          $ref: '#/components/schemas/UUID'
+        textAnswer:
+          type: string
+        numericAnswer:
+          type: number
+        fileId:
+          $ref: '#/components/schemas/UUID'
+        rawPayload:
+          type: object
+          additionalProperties: true
+    ResponsesBatchWrite:
+      type: object
+      required: [responses]
+      properties:
+        responses:
+          type: array
+          items:
+            allOf:
+              - type: object
+                required: [questionId]
+                properties:
+                  questionId:
+                    $ref: '#/components/schemas/UUID'
+              - $ref: '#/components/schemas/ResponseWrite'
+    PlayerQuestion:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        prompt:
+          type: string
+        questionType:
+          $ref: '#/components/schemas/QuestionType'
+        sortOrder:
+          type: integer
+        points:
+          type: number
+        isRequired:
+          type: boolean
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/UUID'
+              label:
+                type: string
+              value:
+                type: string
+              sortOrder:
+                type: integer
+    Evaluation:
+      type: object
+      properties:
+        attemptId:
+          $ref: '#/components/schemas/UUID'
+        status:
+          $ref: '#/components/schemas/EvaluationStatus'
+        totalScore:
+          type: number
+          nullable: true
+        maxScore:
+          type: number
+          nullable: true
+        percentage:
+          type: number
+          nullable: true
+        passed:
+          type: boolean
+          nullable: true
+        evaluatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    Jrs:
+      type: object
+      properties:
+        overallScore:
+          type: number
+        band:
+          type: string
+          nullable: true
+        version:
+          type: string
+        calculatedAt:
+          type: string
+          format: date-time
+        skillScores:
+          type: array
+          items:
+            type: object
+            properties:
+              skillId:
+                $ref: '#/components/schemas/UUID'
+              skillCode:
+                type: string
+              skillName:
+                type: string
+              score:
+                type: number
+              weight:
+                type: number
+    AiEvaluation:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/EvaluationStatus'
+        provider:
+          type: string
+        summary:
+          type: string
+          nullable: true
+        strengths:
+          type: string
+          nullable: true
+        weaknesses:
+          type: string
+          nullable: true
+        processedAt:
+          type: string
+          format: date-time
+          nullable: true
+    Report:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          type: string
+        status:
+          $ref: '#/components/schemas/ReportStatus'
+        summary:
+          type: string
+          nullable: true
+        generatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              sectionKey:
+                type: string
+              title:
+                type: string
+              content:
+                type: string
+              sortOrder:
+                type: integer
+    Dashboard:
+      type: object
+      properties:
+        profile:
+          type: object
+          properties:
+            isComplete:
+              type: boolean
+            displayName:
+              type: string
+              nullable: true
+        jrs:
+          type: object
+          nullable: true
+          properties:
+            overallScore:
+              type: number
+            band:
+              type: string
+            calculatedAt:
+              type: string
+              format: date-time
+        assessments:
+          type: object
+          properties:
+            completed:
+              type: integer
+            inProgress:
+              type: integer
+            available:
+              type: integer
+        latestAttempt:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Attempt'
+        gamification:
+          type: object
+          properties:
+            totalXp:
+              type: integer
+            level:
+              type: object
+              properties:
+                levelNumber:
+                  type: integer
+                name:
+                  type: string
+            currentStreak:
+              type: integer
+            badgesEarned:
+              type: integer
+        subscription:
+          type: object
+          properties:
+            planCode:
+              type: string
+            status:
+              type: string
+        resultsLocked:
+          type: boolean
+    QuestionWrite:
+      type: object
+      required: [code, prompt, questionType]
+      properties:
+        code:
+          type: string
+        prompt:
+          type: string
+        questionType:
+          $ref: '#/components/schemas/QuestionType'
+        sortOrder:
+          type: integer
+        points:
+          type: number
+        isRequired:
+          type: boolean
+        timeLimitSec:
+          type: integer
+        metadata:
+          type: object
+          additionalProperties: true
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionOptionWrite'
+    QuestionOptionWrite:
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        sortOrder:
+          type: integer
+        isCorrect:
+          type: boolean
+        points:
+          type: number
+    Question:
+      allOf:
+        - $ref: '#/components/schemas/QuestionWrite'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/UUID'
+            assessmentId:
+              $ref: '#/components/schemas/UUID'
+    QuestionOption:
+      allOf:
+        - $ref: '#/components/schemas/QuestionOptionWrite'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/UUID'
+            questionId:
+              $ref: '#/components/schemas/UUID'
+    AnalyticsEventWrite:
+      type: object
+      required: [eventName]
+      properties:
+        eventName:
+          type: string
+        userId:
+          $ref: '#/components/schemas/UUID'
+        properties:
+          type: object
+          additionalProperties: true
+        sessionId:
+          type: string
+
+    # Envelope helpers
+    ApiSuccessHealth:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ok, degraded, error]
+                timestamp:
+                  type: string
+                  format: date-time
+                environment:
+                  type: string
+                services:
+                  type: object
+                  properties:
+                    api:
+                      type: string
+                    database:
+                      type: string
+                    redis:
+                      type: string
+                version:
+                  type: string
+    ApiSuccessGoogleStart:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                authorizationUrl:
+                  type: string
+                  format: uri
+                state:
+                  type: string
+    ApiSuccessAuthTokens:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AuthTokens'
+    ApiSuccessCurrentUser:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CurrentUser'
+    ApiSuccessSession:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                valid:
+                  type: boolean
+                expiresAt:
+                  type: string
+                  format: date-time
+                role:
+                  $ref: '#/components/schemas/UserRole'
+    ApiSuccessRbac:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                role:
+                  $ref: '#/components/schemas/UserRole'
+                permissions:
+                  type: array
+                  items:
+                    type: string
+    ApiSuccessProfile:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Profile'
+    ApiSuccessPreferences:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Preferences'
+    ApiSuccessFileMeta:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/FileMeta'
+    ApiSuccessFileUpload:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                fileId:
+                  $ref: '#/components/schemas/UUID'
+                objectKey:
+                  type: string
+                upload:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                    fields:
+                      type: object
+                      additionalProperties:
+                        type: string
+    ApiSuccessCategoryList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    $ref: '#/components/schemas/UUID'
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+    ApiSuccessAssessment:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Assessment'
+    ApiSuccessAssessmentPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Assessment'
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessAttempt:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Attempt'
+    ApiSuccessAttemptPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Attempt'
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessAttemptStatus:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                attemptId:
+                  $ref: '#/components/schemas/UUID'
+                status:
+                  $ref: '#/components/schemas/AttemptStatus'
+                resultsLocked:
+                  type: boolean
+    ApiSuccessPlayerQuestions:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                attemptId:
+                  $ref: '#/components/schemas/UUID'
+                questions:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/PlayerQuestion'
+    ApiSuccessAutosave:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                attemptId:
+                  $ref: '#/components/schemas/UUID'
+                savedCount:
+                  type: integer
+    ApiSuccessEvaluation:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Evaluation'
+    ApiSuccessSkillScoreList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  skillId:
+                    $ref: '#/components/schemas/UUID'
+                  skillCode:
+                    type: string
+                  score:
+                    type: number
+                  maxScore:
+                    type: number
+                  percentage:
+                    type: number
+    ApiSuccessJrs:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Jrs'
+    ApiSuccessAiEvaluation:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AiEvaluation'
+    ApiSuccessReport:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Report'
+    ApiSuccessReportList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Report'
+    ApiSuccessReportPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Report'
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessRecommendationPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        $ref: '#/components/schemas/UUID'
+                      title:
+                        type: string
+                      description:
+                        type: string
+                        nullable: true
+                      priority:
+                        type: integer
+                      skillId:
+                        $ref: '#/components/schemas/UUID'
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessDashboard:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Dashboard'
+    ApiSuccessActivityPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      title:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessProgress:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      assessmentId:
+                        $ref: '#/components/schemas/UUID'
+                      title:
+                        type: string
+                      status:
+                        type: string
+    ApiSuccessStats:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties:
+                type: number
+    ApiSuccessGamification:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                totalXp:
+                  type: integer
+                level:
+                  type: object
+                  properties:
+                    levelNumber:
+                      type: integer
+                    name:
+                      type: string
+                currentStreak:
+                  type: integer
+                longestStreak:
+                  type: integer
+    ApiSuccessXpPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        $ref: '#/components/schemas/UUID'
+                      amount:
+                        type: integer
+                      sourceType:
+                        type: string
+                      balanceAfter:
+                        type: integer
+                      createdAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessUserBadgePage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      badgeId:
+                        $ref: '#/components/schemas/UUID'
+                      code:
+                        type: string
+                      name:
+                        type: string
+                      earnedAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessStreak:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                currentStreak:
+                  type: integer
+                longestStreak:
+                  type: integer
+                lastActivityAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+    ApiSuccessBadgeList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    $ref: '#/components/schemas/UUID'
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  xpReward:
+                    type: integer
+    ApiSuccessLevelList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  levelNumber:
+                    type: integer
+                  name:
+                    type: string
+                  minXp:
+                    type: integer
+                  maxXp:
+                    type: integer
+                    nullable: true
+    ApiSuccessLeaderboardPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      rank:
+                        type: integer
+                      displayName:
+                        type: string
+                      totalXp:
+                        type: integer
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessNotificationPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        $ref: '#/components/schemas/UUID'
+                      type:
+                        $ref: '#/components/schemas/NotificationType'
+                      title:
+                        type: string
+                      body:
+                        type: string
+                      isRead:
+                        type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessUnreadCount:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                unreadCount:
+                  type: integer
+    ApiSuccessPlanList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  name:
+                    type: string
+                  priceCents:
+                    type: integer
+                  currency:
+                    type: string
+                  billingPeriod:
+                    type: string
+                  features:
+                    type: array
+                    items:
+                      type: string
+    ApiSuccessSubscription:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                planCode:
+                  type: string
+                status:
+                  type: string
+                currentPeriodEnd:
+                  type: string
+                  format: date-time
+                  nullable: true
+    ApiSuccessFeatureList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                features:
+                  type: array
+                  items:
+                    type: string
+    ApiSuccessFeatureValidation:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                featureKey:
+                  type: string
+                allowed:
+                  type: boolean
+                reason:
+                  type: string
+                  nullable: true
+    ApiSuccessPublicSettings:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties: true
+    ApiSuccessUserPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CurrentUser'
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessAdminUser:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/CurrentUser'
+    ApiSuccessQuestion:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Question'
+    ApiSuccessQuestionPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Question'
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessQuestionOption:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/QuestionOption'
+    ApiSuccessAnalyticsOverview:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              additionalProperties:
+                type: number
+    ApiSuccessAnalyticsEvent:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                id:
+                  $ref: '#/components/schemas/UUID'
+                eventName:
+                  type: string
+                createdAt:
+                  type: string
+                  format: date-time
+    ApiSuccessAnalyticsEventPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        $ref: '#/components/schemas/UUID'
+                      eventName:
+                        type: string
+                      userId:
+                        $ref: '#/components/schemas/UUID'
+                      createdAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessSettingsList:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Setting'
+    Setting:
+      type: object
+      properties:
+        key:
+          type: string
+        value: {}
+        description:
+          type: string
+          nullable: true
+        isPublic:
+          type: boolean
+    ApiSuccessSetting:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Setting'
+    ApiSuccessAuditLogPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        $ref: '#/components/schemas/UUID'
+                      action:
+                        type: string
+                      resourceType:
+                        type: string
+                      resourceId:
+                        $ref: '#/components/schemas/UUID'
+                      message:
+                        type: string
+                      createdAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'
+    ApiSuccessHrReview:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                id:
+                  $ref: '#/components/schemas/UUID'
+                attemptId:
+                  $ref: '#/components/schemas/UUID'
+                status:
+                  $ref: '#/components/schemas/HrReviewStatus'
+                notes:
+                  type: string
+                  nullable: true
+                reviewerId:
+                  $ref: '#/components/schemas/UUID'
+                  nullable: true
+    ApiSuccessHrReviewPage:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccessBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        $ref: '#/components/schemas/UUID'
+                      attemptId:
+                        $ref: '#/components/schemas/UUID'
+                      status:
+                        $ref: '#/components/schemas/HrReviewStatus'
+                      createdAt:
+                        type: string
+                        format: date-time
+                meta:
+                  $ref: '#/components/schemas/PaginatedMeta'

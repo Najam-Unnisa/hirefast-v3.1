@@ -1,67 +1,41 @@
-import swaggerJsdoc from 'swagger-jsdoc';
-import { env } from './env';
+/**
+ * Serve the normative HireFast OpenAPI contract from docs/api/openapi.yaml.
+ * Documentation wiring only — no business route implementation.
+ */
+import fs from 'fs';
+import path from 'path';
+import yaml from 'js-yaml';
+import { logger } from '../utils/logger';
 
-const options: swaggerJsdoc.Options = {
-  definition: {
-    openapi: '3.0.3',
-    info: {
-      title: 'HireFast API',
-      version: '1.0.0',
-      description:
-        'HireFast AI-powered employability assessment platform API. Foundation documentation only.',
-      contact: {
-        name: 'HireFast Engineering',
-      },
-    },
-    servers: [
-      {
-        url: `${env.apiUrl}${env.apiPrefix}`,
-        description: 'API v1',
-      },
-      {
-        url: env.apiUrl,
-        description: 'Root (health)',
-      },
-    ],
-    components: {
-      securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-        },
-      },
-      schemas: {
-        ApiSuccessResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', example: true },
-            message: { type: 'string' },
-            data: { type: 'object' },
-          },
-        },
-        ApiErrorResponse: {
-          type: 'object',
-          properties: {
-            success: { type: 'boolean', example: false },
-            message: { type: 'string' },
-            errors: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  field: { type: 'string' },
-                  message: { type: 'string' },
-                  code: { type: 'string' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-  apis: ['./src/modules/**/*.routes.ts', './src/routes/**/*.ts'],
-};
+function resolveOpenApiPath(): string | null {
+  const candidates = [
+    path.resolve(process.cwd(), '../../docs/api/openapi.yaml'),
+    path.resolve(process.cwd(), 'docs/api/openapi.yaml'),
+    path.resolve(__dirname, '../../../../docs/api/openapi.yaml'),
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) ?? null;
+}
 
-export const swaggerSpec = swaggerJsdoc(options);
+export function loadOpenApiSpec(): Record<string, unknown> {
+  const filePath = resolveOpenApiPath();
+  if (!filePath) {
+    logger.warn('OpenAPI contract file not found; using minimal stub');
+    return {
+      openapi: '3.0.3',
+      info: {
+        title: 'HireFast API',
+        version: '1.0.0',
+        description: 'Contract file missing — see docs/api/openapi.yaml',
+      },
+      paths: {},
+    };
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const spec = yaml.load(raw) as Record<string, unknown>;
+  logger.info('OpenAPI contract loaded', { path: filePath });
+  return spec;
+}
+
+/** Normative Swagger/OpenAPI document for `/docs`. */
+export const swaggerSpec = loadOpenApiSpec();

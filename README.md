@@ -79,6 +79,7 @@ pnpm db:seed
 ```
 
 Database architecture docs live in `docs/database/`.
+API contract docs live in `docs/api/` (OpenAPI at `docs/api/openapi.yaml`, Swagger UI at `/docs`).
 
 ### 5. Run apps
 

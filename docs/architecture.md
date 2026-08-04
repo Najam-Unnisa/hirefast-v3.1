@@ -31,7 +31,18 @@ See:
 - `docs/database/INDEXES_AND_CONSTRAINTS.md` — indexing & CHECKs
 - `docs/database/REVIEW.md` — validation & future notes
 
+## REST API architecture
+
+See:
+
+- `docs/api/ARCHITECTURE.md` — modules & resource map
+- `docs/api/ENDPOINT_CATALOG.md` — full endpoint catalog
+- `docs/api/STANDARDS.md` — envelopes, pagination, security, rate limits
+- `docs/api/AUTH_MATRIX.md` — authz matrix
+- `docs/api/openapi.yaml` — normative OpenAPI 3 contract (served at `/docs`)
+- `docs/api/REVIEW.md` — API architecture review
+
 ## Notes
 
-This repository currently contains the **engineering foundation** plus the **complete database architecture**.
+This repository currently contains the **engineering foundation**, **complete database architecture**, and **REST API contract**.
 Application business features (auth flows, assessments runtime, JRS calculation, reports UI) are intentionally not implemented yet.
