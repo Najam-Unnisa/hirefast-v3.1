@@ -24,13 +24,14 @@ export class AuthController {
         refreshToken: tokens.refreshToken,
         expiresIn: tokens.expiresIn,
       });
-      res.redirect(`${env.appUrl}/auth/callback?${query.toString()}`);
+      res.redirect(`${env.appUrl}/auth/callback#${query.toString()}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Google authentication failed.';
       const query = new URLSearchParams({
         error: 'google_auth_failed',
         message,
       });
+      // Errors may stay in query (non-secret); success tokens use the URL fragment only.
       res.redirect(`${env.appUrl}/auth/callback?${query.toString()}`);
     }
   }

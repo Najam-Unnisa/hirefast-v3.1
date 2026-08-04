@@ -5,8 +5,23 @@ export interface CompleteProfileInput {
   lastName: string;
 }
 
-export async function completeGuestProfile(input: CompleteProfileInput) {
-  return apiClient.post('/users/me/profile/complete', input);
+export interface CompleteProfileResponse {
+  id: string;
+  email: string;
+  status: string;
+  role: { name: string };
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    displayName: string | null;
+    isComplete: boolean;
+  } | null;
+}
+
+export async function completeGuestProfile(
+  input: CompleteProfileInput,
+): Promise<CompleteProfileResponse> {
+  return apiClient.post<CompleteProfileResponse>('/users/me/profile/complete', input);
 }
 
 export async function getMyProfile() {

@@ -50,3 +50,8 @@ export async function logout(refreshToken: string | null): Promise<void> {
 export async function createDevGuestSession(email: string): Promise<SessionTokens> {
   return apiClient.post<SessionTokens>('/auth/dev/guest', { email }, { skipAuthRetry: true });
 }
+
+/** Rotate refresh token and mint a new access JWT (picks up role upgrades). */
+export async function refreshAuthSession(refreshToken: string): Promise<SessionTokens> {
+  return apiClient.post<SessionTokens>('/auth/refresh', { refreshToken }, { skipAuthRetry: true });
+}

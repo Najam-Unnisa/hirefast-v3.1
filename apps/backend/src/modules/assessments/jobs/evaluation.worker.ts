@@ -118,23 +118,22 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
         },
       });
 
-      if (!attempt.resultsLocked) {
-        await tx.jobReadinessScore.upsert({
-          where: { attemptId },
-          update: {
-            overallScore: percentage,
-            band: percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL',
-            calculatedAt: evaluatedAt,
-          },
-          create: {
-            attemptId,
-            userId: attempt.userId,
-            overallScore: percentage,
-            band: percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL',
-            calculatedAt: evaluatedAt,
-          },
-        });
-      }
+      // Always persist JRS; RESULTS_LOCKED gates visibility on read, not persistence.
+      await tx.jobReadinessScore.upsert({
+        where: { attemptId },
+        update: {
+          overallScore: percentage,
+          band: percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL',
+          calculatedAt: evaluatedAt,
+        },
+        create: {
+          attemptId,
+          userId: attempt.userId,
+          overallScore: percentage,
+          band: percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL',
+          calculatedAt: evaluatedAt,
+        },
+      });
     });
 
     trackEvent({

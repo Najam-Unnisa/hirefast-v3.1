@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Alert, AlertDescription, AlertTitle, Button, Input, Label } from '@hirefast/shared-ui';
 import { useSession } from '@/providers/session-provider';
+import { getRefreshToken } from '@/lib/session';
 import { completeGuestProfile } from '@/services/users.service';
+import { refreshAuthSession } from '@/services/auth.service';
 import { trackClientEvent } from '@/services/analytics.service';
 import { ApiClientError } from '@/services/api-client';
 
 export function RegistrationHandoffForm(): React.ReactElement {
   const router = useRouter();
-  const { user, refreshUser, isGuest } = useSession();
+  const { user, establishSession, isGuest } = useSession();
   const [firstName, setFirstName] = useState(user?.name?.split(' ')[0] ?? '');
   const [lastName, setLastName] = useState(user?.name?.split(' ').slice(1).join(' ') ?? '');
   const [busy, setBusy] = useState(false);
@@ -25,13 +27,21 @@ export function RegistrationHandoffForm(): React.ReactElement {
     try {
       trackClientEvent('registration.cta_clicked', { source: 'registration_form' });
       await completeGuestProfile({ firstName: firstName.trim(), lastName: lastName.trim() });
-      await refreshUser();
+      // Refresh JWT so access token role matches GUEST → USER upgrade.
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        throw new Error('Session expired. Please sign in again to continue.');
+      }
+      const tokens = await refreshAuthSession(refreshToken);
+      await establishSession(tokens);
       setDone(true);
     } catch (err) {
       setError(
         err instanceof ApiClientError
           ? err.message
-          : 'Could not complete registration. Please try again.',
+          : err instanceof Error
+            ? err.message
+            : 'Could not complete registration. Please try again.',
       );
       setBusy(false);
     }

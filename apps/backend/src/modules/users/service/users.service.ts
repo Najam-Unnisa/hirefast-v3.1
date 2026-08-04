@@ -1,7 +1,7 @@
 import { prisma } from '../../../config/database';
 import { ROLES } from '../../../constants/roles';
 import { trackEvent } from '../../../services/analytics.service';
-import { BadRequestError, ConflictError, NotFoundError } from '../../../utils/errors';
+import { BadRequestError, NotFoundError } from '../../../utils/errors';
 
 export class UsersService {
   async getMyProfile(userId: string) {
@@ -31,16 +31,26 @@ export class UsersService {
       throw new BadRequestError('First name and last name must be 100 characters or fewer.');
     }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.findUnique({
+    const user = await prisma.$transaction(async (tx) => {
+      const existing = await tx.user.findUnique({
         where: { id: userId },
         include: { role: true },
       });
-      if (!user) {
+      if (!existing) {
         throw new NotFoundError('User not found.');
       }
-      if (user.role.name !== ROLES.GUEST) {
-        throw new ConflictError('The profile has already been completed.');
+      if (existing.role.name !== ROLES.GUEST) {
+        // Idempotent: already upgraded — return current user without error.
+        return tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: {
+            id: true,
+            email: true,
+            status: true,
+            role: { select: { name: true } },
+            profile: true,
+          },
+        });
       }
 
       const [userRole, freePlan] = await Promise.all([
@@ -118,7 +128,8 @@ export class UsersService {
       userId,
       properties: { upgradedRole: ROLES.USER },
     });
-    return result;
+    // Caller must refresh the access token (POST /auth/refresh) so JWT role becomes USER.
+    return user;
   }
 }
 
