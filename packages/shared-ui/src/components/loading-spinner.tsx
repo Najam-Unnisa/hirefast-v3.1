@@ -13,7 +13,7 @@ export function LoadingSpinner({
   return (
     <div className={cn('flex items-center justify-center gap-2', className)} role="status">
       <Loader2 className="h-5 w-5 animate-spin text-[var(--hf-primary)]" aria-hidden="true" />
-      <span className="sr-only">{label}</span>
+      <span className="text-sm text-[var(--hf-muted)]">{label}</span>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { connectRedis, disconnectRedis } from './config/redis';
 import { closeAllQueues, closeAllWorkers, initializePlatformQueues } from './jobs';
+import { registerAssessmentWorkers } from './modules/assessments/jobs/evaluation.worker';
 import { logger } from './utils/logger';
 
 /**
@@ -27,6 +28,7 @@ async function bootstrap(): Promise<void> {
   try {
     await connectRedis();
     initializePlatformQueues();
+    registerAssessmentWorkers();
   } catch (error) {
     logger.error('Failed to connect to Redis / initialize queues', { error });
     if (env.isProduction) {

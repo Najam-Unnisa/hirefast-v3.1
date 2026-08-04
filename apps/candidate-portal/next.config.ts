@@ -8,6 +8,14 @@ const nextConfig: NextConfig = {
     '@hirefast/shared-config',
     '@hirefast/shared-ui',
   ],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
