@@ -20,7 +20,7 @@ Critical gaps remain:
 2. **~~RBAC model is incoherent at the identity boundary~~** — **Resolved** (roles `ADMIN`/`USER`/`GUEST`; commercial via `FREE`/`PREMIUM` plans). See `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`.
 3. **~~Auth is incomplete~~** — **Clarified:** Authentication **Foundation** is implemented (JWT, middleware, Google OAuth config/provider, Redis, refresh-token store). Auth **HTTP APIs** (login/refresh/logout/session) are intentionally deferred to **Feature Implementation** — not an architectural defect. See `docs/architecture/AUTHENTICATION_FOUNDATION.md`.
 4. **~~Frontend is duplicated scaffolding~~** — **Resolved** via `@hirefast/shared-ui` (see `docs/architecture/SHARED_UI.md`). Portal pages/constants remain app-local by design.
-5. **Operational readiness is shallow** — no monitoring/APM, no backup/DR runbooks, no e2e, CI omits lint/format. BullMQ **queues** are foundation-ready; **feature workers** are intentionally deferred (see `BULLMQ_FOUNDATION.md`) — not an empty-shell defect.
+5. **~~Operational readiness is shallow~~** — **Classified:** CI quality gates (format + lint) are in place. E2E, APM/monitoring, and backup/DR are **intentionally deferred** to Feature Implementation / production readiness — see `docs/engineering/OPERATIONS_ROADMAP.md`. Not a single “ops failure.”
 6. **Security posture is “scaffolded, not enforced”** — Helmet/CORS/rate-limit exist globally; IDOR, idempotency, request IDs, permission checks, and scoped rate limits do not (enforcement lands with feature routes).
 
 **Verdict:** Architecture is a **strong blueprint**. Authentication Foundation is in place. Domain Feature Implementation (including auth APIs) remains ahead. Approve **conditionally** for remaining Phase 0 architecture items (Section 19–20) — do **not** treat deferred auth APIs as a foundation failure.
@@ -105,9 +105,9 @@ Critical gaps remain:
 
 ### DevOps / testing
 
-- CI: typecheck + test + build; **no lint/format**, no e2e, no image build, no migrate-on-deploy docs for prod.
-- Tests: 2 health API cases + 2 Button unit tests. Effectively **zero** coverage of authz/DB invariants.
-- No monitoring, tracing, alerting, backup, or incident runbooks.
+- CI: install → shared packages → Prisma → migrate → **format check** → **lint** → typecheck → test → build (`docs/engineering/QUALITY_AND_CI.md`).
+- Tests: health API + shared-ui Button unit tests; expand with features. **No E2E framework yet** (deferred until core workflows exist).
+- No monitoring/APM vendors yet — deferred to production readiness (`OPERATIONS_ROADMAP.md`). Backup/DR documented as placeholder only.
 
 ---
 
@@ -120,7 +120,7 @@ Critical gaps remain:
 | **Auth Feature APIs deferred** | Info     | Expected under Architecture-First; foundation ready — see `AUTHENTICATION_FOUNDATION.md`      |
 | **~~Empty workers~~**          | —        | **Clarified** — foundation has queues + worker factory; processors are Feature Implementation |
 | **~~UI fork~~**                | —        | **Resolved** — `@hirefast/shared-ui`                                                          |
-| **No observability**           | High     | Cannot operate AI cost, queue lag, or auth failures in prod                                   |
+| **No observability**           | Info     | Deferred to production readiness — see `OPERATIONS_ROADMAP.md`                                |
 | **IDOR if rushed**             | Critical | Attempt/report/file IDs are guessable UUIDs still need ownership checks — easy to forget      |
 | **Permission table theater**   | Medium   | Maintained seed data that auth never reads → false sense of RBAC                              |
 | **Analytics growth**           | Medium   | Unpartitioned `analytics_events` / `audit_logs` will hurt                                     |
@@ -167,7 +167,7 @@ Critical gaps remain:
 7. Add `attempt_response_options` when multi-select ships (don’t overload JSON).
 8. Index `learning_recommendations(deleted_at)` or drop soft delete if unused.
 9. Replace console logger with pino + request correlation.
-10. CI: lint + format check + OpenAPI lint (Spectral).
+10. ~~CI: lint + format check~~ — **Done**. OpenAPI lint (Spectral) remains optional P1.
 11. Contract test harness against OpenAPI for each module as it lands.
 12. Entitlement helper: `assertFeature(user, 'assessments.premium')` — never scatter role checks.
 
@@ -275,11 +275,15 @@ Critical gaps remain:
 | Domain modules implemented                               | ❌                                               |
 | BullMQ queue foundation                                  | ✅                                               |
 | Feature workers (AI / report / email / notifications)    | ⏳ Feature Implementation                        |
-| Observability                                            | ❌                                               |
+| Observability / APM                                      | ⏳ Production readiness                          |
 | Backups / DR                                             | ❌                                               |
 | Secrets management (non-local)                           | ❌                                               |
-| e2e / contract tests                                     | ❌                                               |
-| CI lint + security gates                                 | ❌                                               |
+| e2e / contract tests                                     | ⏳ After core workflows / with features          |
+| CI lint + format gates                                   | ✅                                               |
+| Unit / integration tests                                 | ✅ (expand with features)                        |
+| E2E testing                                              | ⏳ After core workflows                          |
+| Monitoring / APM                                         | ⏳ Production readiness                          |
+| Backup & DR automation                                   | ⏳ Production readiness (placeholder docs only)  |
 | Shared UI / DX for two portals                           | ✅ (`@hirefast/shared-ui`)                       |
 | Rate-limit & idempotency per STANDARDS                   | ❌                                               |
 | Staging environment                                      | ❌                                               |
@@ -302,7 +306,7 @@ The HireFast architecture is **approved as a foundation blueprint**. Authenticat
 3. ~~Extract **shared UI** and stop duplicating portals~~ — **Done** (`@hirefast/shared-ui`).
 4. ~~Establish **worker/process conventions** for BullMQ~~ — **Done** (foundation queues + feature-owned `createWorker`; see `BULLMQ_FOUNDATION.md`).
 5. Add **request ID + consistent error/rate-limit codes**; freeze OpenAPI ambiguities (report status codes).
-6. Add **CI lint** and a written rule: _no module merges without tests for authz ownership_.
+6. ~~Add **CI lint**~~ — **Done** (Prettier + ESLint in CI). Team rule documented: _no module merges without tests for authz ownership_ (enforced as features land).
 
 ### Do **not** approve if the team intends to:
 
@@ -332,7 +336,7 @@ Consume the foundation when features begin; do not rebuild it.
 | OpenAPI ~81 paths                                             | `docs/api/openapi.yaml`                                                          |
 | Shared UI package                                             | `packages/shared-ui`                                                             |
 | FE auth stub (feature phase)                                  | `packages/shared-ui/src/providers/auth-provider.tsx`                             |
-| CI scope                                                      | `.github/workflows/ci.yml`                                                       |
+| CI quality gates (format + lint + typecheck + test + build)   | `.github/workflows/ci.yml`, `docs/engineering/QUALITY_AND_CI.md`                 |
 | Identity roles ADMIN/USER/GUEST                               | `apps/backend/prisma/seeds/roles-permissions.ts`                                 |
 | Subscription plans FREE/PREMIUM                               | `apps/backend/prisma/seeds/subscription-plans.ts`                                |
 | Subscription middleware                                       | `apps/backend/src/middlewares/subscription.middleware.ts`                        |

@@ -56,6 +56,8 @@ Identity, RBAC, and commercial access are separated:
 - `docs/architecture/AUTHENTICATION_FOUNDATION.md` — Foundation (✅) vs Feature Implementation (⏳)
 - `docs/architecture/BULLMQ_FOUNDATION.md` — Queues (✅) vs feature workers (⏳)
 - `docs/architecture/SHARED_UI.md` — Shared UI package
+- `docs/engineering/QUALITY_AND_CI.md` — CI quality gates
+- `docs/engineering/OPERATIONS_ROADMAP.md` — Deferred ops (E2E, APM, backup/DR)
 
 Roles (`ADMIN` | `USER` | `GUEST`) are identity only. Plans (`FREE` | `PREMIUM`) are commercial only.
 
@@ -69,7 +71,7 @@ See:
 - `docs/reviews/PHASE0_REMEDIATION.md` — mandatory P0 checklist
 - `docs/adr/` — Architecture Decision Records
 
-**Status:** Conditional approval for remaining Phase 0 **architecture** items. Authentication Foundation is complete; auth HTTP APIs are Feature Implementation (not a foundation defect).
+**Status:** Conditional approval for remaining Phase 0 **architecture** items (e.g. request ID / rate-limit alignment, OpenAPI ambiguity freeze). CI format+lint gates, shared UI, BullMQ foundation, auth foundation, and RBAC/subscription separation are complete.
 
 ## Notes
 
@@ -79,3 +81,4 @@ Under **Architecture-First** methodology:
 
 - Authentication **Foundation** is implemented and production-ready for feature teams to consume.
 - Authentication **Feature Implementation** (Google login routes, refresh/logout/session APIs, FE session UX) and other business features (assessments, JRS, reports UI) are intentionally not implemented yet.
+- E2E testing, APM/monitoring, and backup automation are deferred — see `docs/engineering/OPERATIONS_ROADMAP.md`.

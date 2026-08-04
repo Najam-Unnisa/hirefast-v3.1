@@ -76,13 +76,22 @@ docker compose -f docker/docker-compose.yml up -d postgres redis
 ### 4. Build shared packages & generate Prisma client
 
 ```bash
-pnpm --filter @hirefast/shared-types build
-pnpm --filter @hirefast/shared-utils build
-pnpm --filter @hirefast/shared-config build
+pnpm run -r --filter=./packages/* build
 pnpm db:generate
 pnpm db:migrate:dev
 pnpm db:seed
 ```
+
+Quality gates (also enforced in CI):
+
+```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+See `docs/engineering/QUALITY_AND_CI.md`.
 
 Database architecture docs live in `docs/database/`.
 API contract docs live in `docs/api/` (`openapi.yaml` = design-time target contract;
@@ -114,7 +123,8 @@ pnpm dev:admin        # http://localhost:3001
 | `pnpm build`          | Build all packages and apps   |
 | `pnpm test`           | Run all tests                 |
 | `pnpm lint`           | Lint all workspaces           |
-| `pnpm format`         | Prettier format               |
+| `pnpm format`         | Prettier write                |
+| `pnpm format:check`   | Prettier check (CI gate)      |
 | `pnpm db:generate`    | Generate Prisma client        |
 | `pnpm db:migrate:dev` | Create/apply migrations (dev) |
 | `pnpm docker:up`      | Start Docker compose stack    |
