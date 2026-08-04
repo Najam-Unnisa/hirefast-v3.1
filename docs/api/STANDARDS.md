@@ -194,18 +194,18 @@ Respond `429` with envelope + `Retry-After`.
 
 ## Security standards (contract-level)
 
-| Control       | Standard                                                                          |
-| ------------- | --------------------------------------------------------------------------------- |
-| Transport     | HTTPS only in non-local envs                                                      |
-| Access token  | JWT, short-lived (`15m` default)                                                  |
-| Refresh token | Opaque/JWT refresh, rotated; stored hashed in Redis; **not** in Postgres          |
-| RBAC          | Enforced on every protected route; roles: `ADMIN`, `GUEST`, `FREEMIUM`, `PREMIUM` |
-| CORS          | Allowlist candidate + admin origins                                               |
-| Headers       | Helmet defaults; no sensitive data in URLs                                        |
-| Input         | Validate + sanitize text fields for XSS in stored content                         |
-| Output        | Never return secrets, raw provider keys, or internal stack traces                 |
-| File upload   | Auth required; virus scan hook (future); purpose-scoped                           |
-| IDOR          | All user-scoped resources filtered by `sub` unless Admin                          |
+| Control       | Standard                                                                                                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Transport     | HTTPS only in non-local envs                                                                                     |
+| Access token  | JWT, short-lived (`15m` default)                                                                                 |
+| Refresh token | Opaque/JWT refresh, rotated; stored hashed in Redis; **not** in Postgres                                         |
+| RBAC          | Enforced on every protected route; identity roles: `ADMIN`, `USER`, `GUEST` (commercial access via subscription) |
+| CORS          | Allowlist candidate + admin origins                                                                              |
+| Headers       | Helmet defaults; no sensitive data in URLs                                                                       |
+| Input         | Validate + sanitize text fields for XSS in stored content                                                        |
+| Output        | Never return secrets, raw provider keys, or internal stack traces                                                |
+| File upload   | Auth required; virus scan hook (future); purpose-scoped                                                          |
+| IDOR          | All user-scoped resources filtered by `sub` unless Admin                                                         |
 
 ### Locked results (Guest)
 
@@ -218,18 +218,19 @@ When `user.role === GUEST` or `profile.isComplete === false` **and** attempt `re
 
 ## Error code catalog (stable `errors[].code`)
 
-| Code                 | Meaning                       |
-| -------------------- | ----------------------------- |
-| `VALIDATION_ERROR`   | Field validation              |
-| `UNAUTHORIZED`       | Auth required / invalid token |
-| `FORBIDDEN`          | RBAC / premium / ownership    |
-| `RESULTS_LOCKED`     | Guest profile incomplete      |
-| `PREMIUM_REQUIRED`   | Premium feature               |
-| `NOT_FOUND`          | Missing resource              |
-| `CONFLICT`           | State conflict                |
-| `RATE_LIMITED`       | Too many requests             |
-| `EVALUATION_PENDING` | Result not ready              |
-| `INTERNAL_ERROR`     | Unexpected                    |
+| Code                    | Meaning                                                                     |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `VALIDATION_ERROR`      | Field validation                                                            |
+| `UNAUTHORIZED`          | Auth required / invalid token                                               |
+| `FORBIDDEN`             | RBAC / ownership                                                            |
+| `RESULTS_LOCKED`        | Guest profile incomplete                                                    |
+| `SUBSCRIPTION_REQUIRED` | Missing/invalid plan or feature entitlement                                 |
+| `PREMIUM_REQUIRED`      | Legacy alias for premium subscription gate (prefer `SUBSCRIPTION_REQUIRED`) |
+| `NOT_FOUND`             | Missing resource                                                            |
+| `CONFLICT`              | State conflict                                                              |
+| `RATE_LIMITED`          | Too many requests                                                           |
+| `EVALUATION_PENDING`    | Result not ready                                                            |
+| `INTERNAL_ERROR`        | Unexpected                                                                  |
 
 ---
 

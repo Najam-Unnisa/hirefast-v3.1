@@ -17,46 +17,46 @@ Scope: Complete PostgreSQL / Prisma schema design (no business logic)
 
 ### Core entities
 
-| Entity                     | Why it exists                                                                                                    |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **User**                   | Platform identity for Guest / Freemium / Premium / Admin. Google OAuth subject is attached; no passwords stored. |
-| **Role**                   | Extensible RBAC identity (not hard-wired to four values only).                                                   |
-| **Permission**             | Fine-grained authorization units; Admin portal + future APIs.                                                    |
-| **RolePermission**         | M:N junction — roles compose permissions without duplication.                                                    |
-| **UserProfile**            | 1:1 registration/profile data; Guest results stay locked until profile is complete.                              |
-| **AuthIdentity**           | External IdP linkage (Google today; more providers later) without storing OAuth secrets.                         |
-| **AssessmentCategory**     | Lookup for grouping assessments (e.g. Communication).                                                            |
-| **Skill**                  | Canonical skill taxonomy used by assessments and JRS breakdown.                                                  |
-| **Assessment**             | Assessment definition (config, access tier, category).                                                           |
-| **AssessmentSkill**        | M:N — which skills an assessment measures.                                                                       |
-| **Question**               | Assessment content unit.                                                                                         |
-| **QuestionOption**         | Options for choice-based questions.                                                                              |
-| **AssessmentAttempt**      | One candidate run of an assessment (transactional root for submit → evaluate → JRS → XP).                        |
-| **AttemptResponse**        | Candidate answers per question.                                                                                  |
-| **AttemptEvaluation**      | Deterministic backend scoring result for an attempt.                                                             |
-| **EvaluationSkillScore**   | Deterministic per-skill scores (feeds JRS).                                                                      |
-| **AiEvaluation**           | Qualitative AI analysis — never authoritative for numeric JRS.                                                   |
-| **JobReadinessScore**      | Authoritative JRS snapshot (backend-controlled).                                                                 |
-| **JrsSkillScore**          | JRS skill breakdown.                                                                                             |
-| **AiReport**               | AI report container for an attempt / user.                                                                       |
-| **AiReportSection**        | Structured report sections (summary, strengths, weaknesses, recommendations).                                    |
-| **Level**                  | Gamification level ladder.                                                                                       |
-| **Badge**                  | Badge definitions.                                                                                               |
-| **XpRule**                 | Configurable XP awards by event type.                                                                            |
-| **UserGamification**       | 1:1 aggregate XP / level / streak state (fast dashboard reads).                                                  |
-| **XpTransaction**          | Append-only XP ledger (audit + recomputation).                                                                   |
-| **UserBadge**              | Earned badges.                                                                                                   |
-| **SubscriptionPlan**       | Freemium / Premium (+ future plans).                                                                             |
-| **PlanFeature**            | Features enabled per plan.                                                                                       |
-| **UserSubscription**       | Commercial subscription state (orthogonal to role; sync is app logic).                                           |
-| **LearningRecommendation** | Personalized improvement suggestions.                                                                            |
-| **Notification**           | In-app (and channel-ready) notifications.                                                                        |
-| **NotificationPreference** | Per-user channel preferences.                                                                                    |
-| **FileObject**             | Object-storage metadata only (R2/S3 keys — never blobs in Postgres).                                             |
-| **HrReview**               | Admin/HR review workflow over attempts/reports.                                                                  |
-| **AuditLog**               | Security / compliance trail (no secrets).                                                                        |
-| **PlatformSetting**        | Key/value platform configuration.                                                                                |
-| **AnalyticsEvent**         | Lightweight product analytics events for dashboards.                                                             |
+| Entity                     | Why it exists                                                                                                                               |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User**                   | Platform identity for Guest / User / Admin. Google OAuth subject is attached; no passwords stored. Commercial tier is not part of identity. |
+| **Role**                   | Extensible RBAC identity: `ADMIN`, `USER`, `GUEST` (not commercial tiers).                                                                  |
+| **Permission**             | Fine-grained authorization units; Admin portal + future APIs.                                                                               |
+| **RolePermission**         | M:N junction — roles compose permissions without duplication.                                                                               |
+| **UserProfile**            | 1:1 registration/profile data; Guest results stay locked until profile is complete.                                                         |
+| **AuthIdentity**           | External IdP linkage (Google today; more providers later) without storing OAuth secrets.                                                    |
+| **AssessmentCategory**     | Lookup for grouping assessments (e.g. Communication).                                                                                       |
+| **Skill**                  | Canonical skill taxonomy used by assessments and JRS breakdown.                                                                             |
+| **Assessment**             | Assessment definition (config, access tier, category).                                                                                      |
+| **AssessmentSkill**        | M:N — which skills an assessment measures.                                                                                                  |
+| **Question**               | Assessment content unit.                                                                                                                    |
+| **QuestionOption**         | Options for choice-based questions.                                                                                                         |
+| **AssessmentAttempt**      | One candidate run of an assessment (transactional root for submit → evaluate → JRS → XP).                                                   |
+| **AttemptResponse**        | Candidate answers per question.                                                                                                             |
+| **AttemptEvaluation**      | Deterministic backend scoring result for an attempt.                                                                                        |
+| **EvaluationSkillScore**   | Deterministic per-skill scores (feeds JRS).                                                                                                 |
+| **AiEvaluation**           | Qualitative AI analysis — never authoritative for numeric JRS.                                                                              |
+| **JobReadinessScore**      | Authoritative JRS snapshot (backend-controlled).                                                                                            |
+| **JrsSkillScore**          | JRS skill breakdown.                                                                                                                        |
+| **AiReport**               | AI report container for an attempt / user.                                                                                                  |
+| **AiReportSection**        | Structured report sections (summary, strengths, weaknesses, recommendations).                                                               |
+| **Level**                  | Gamification level ladder.                                                                                                                  |
+| **Badge**                  | Badge definitions.                                                                                                                          |
+| **XpRule**                 | Configurable XP awards by event type.                                                                                                       |
+| **UserGamification**       | 1:1 aggregate XP / level / streak state (fast dashboard reads).                                                                             |
+| **XpTransaction**          | Append-only XP ledger (audit + recomputation).                                                                                              |
+| **UserBadge**              | Earned badges.                                                                                                                              |
+| **SubscriptionPlan**       | Commercial plans (`FREE`, `PREMIUM`, + future) — sole commercial model.                                                                     |
+| **PlanFeature**            | Features enabled per plan (gates product capabilities without RBAC changes).                                                                |
+| **UserSubscription**       | Commercial subscription state (orthogonal to role; never duplicated as a role).                                                             |
+| **LearningRecommendation** | Personalized improvement suggestions.                                                                                                       |
+| **Notification**           | In-app (and channel-ready) notifications.                                                                                                   |
+| **NotificationPreference** | Per-user channel preferences.                                                                                                               |
+| **FileObject**             | Object-storage metadata only (R2/S3 keys — never blobs in Postgres).                                                                        |
+| **HrReview**               | Admin/HR review workflow over attempts/reports.                                                                                             |
+| **AuditLog**               | Security / compliance trail (no secrets).                                                                                                   |
+| **PlatformSetting**        | Key/value platform configuration.                                                                                                           |
+| **AnalyticsEvent**         | Lightweight product analytics events for dashboards.                                                                                        |
 
 ### Supporting / junction / lookup
 
@@ -207,7 +207,7 @@ XpRule (config; referenced logically by code via eventKey)
 
 ### Important design decisions
 
-1. **Role + Subscription coexistence** — RBAC uses `roles`; commercial state uses `user_subscriptions`. Prevents billing fields from polluting identity and allows multiple future plans.
+1. **Role + Subscription coexistence** — RBAC uses identity roles (`ADMIN` / `USER` / `GUEST`); commercial state uses `user_subscriptions` + plans. Prevents billing fields from polluting identity and allows multiple future plans without RBAC changes.
 2. **Deterministic vs AI split** — `attempt_evaluations` / `job_readiness_scores` are authoritative numerics; `ai_evaluations` / `ai_reports` are qualitative and independently fail/retry.
 3. **Attempt as transactional root** — Submit, evaluate, JRS, report, XP, badge unlocks all hang off `assessment_attempts`, enabling single-attempt consistency.
 4. **Gamification aggregate + ledger** — `user_gamification` for O(1) dashboard; `xp_transactions` for audit/recompute.
@@ -257,7 +257,7 @@ XpRule (config; referenced logically by code via eventKey)
 | AI report generation  | `ai_evaluations`, `ai_reports`, `ai_report_sections`             |
 | XP awarding           | `xp_transactions`, `user_gamification` (± level)                 |
 | Badge unlocking       | `user_badges`                                                    |
-| Premium upgrade       | `user_subscriptions` (+ role update in app transaction)          |
+| Premium upgrade       | `user_subscriptions` only (no role change to a commercial tier)  |
 
 ---
 

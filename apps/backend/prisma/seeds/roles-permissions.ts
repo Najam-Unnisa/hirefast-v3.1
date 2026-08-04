@@ -2,9 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 
 export interface SeededRoles {
   adminRoleId: string;
+  userRoleId: string;
   guestRoleId: string;
-  freemiumRoleId: string;
-  premiumRoleId: string;
 }
 
 const PERMISSIONS = [
@@ -16,6 +15,7 @@ const PERMISSIONS = [
   { code: 'assessments:manage', displayName: 'Manage assessments', module: 'assessments' },
   { code: 'questions:manage', displayName: 'Manage questions', module: 'assessments' },
   { code: 'attempts:read', displayName: 'Read assessment attempts', module: 'assessments' },
+  { code: 'attempts:submit', displayName: 'Submit assessment attempts', module: 'assessments' },
   { code: 'reports:read', displayName: 'Read reports', module: 'reports' },
   { code: 'reports:manage', displayName: 'Manage reports', module: 'reports' },
   { code: 'hr_reviews:manage', displayName: 'Manage HR reviews', module: 'hr' },
@@ -26,39 +26,49 @@ const PERMISSIONS = [
     displayName: 'Manage gamification config',
     module: 'gamification',
   },
+  { code: 'profile:read', displayName: 'Read own profile', module: 'users' },
+  { code: 'profile:write', displayName: 'Update own profile', module: 'users' },
+  { code: 'dashboard:read', displayName: 'Read candidate dashboard', module: 'dashboard' },
 ] as const;
 
+/**
+ * Identity-based permission maps.
+ * Commercial (FREE / PREMIUM) capabilities are NOT encoded here — see subscription plans.
+ */
 const ROLE_PERMISSION_MAP: Record<string, string[]> = {
   ADMIN: PERMISSIONS.map((p) => p.code),
-  GUEST: ['assessments:read'],
-  FREEMIUM: ['assessments:read', 'attempts:read', 'reports:read'],
-  PREMIUM: ['assessments:read', 'attempts:read', 'reports:read'],
+  USER: [
+    'assessments:read',
+    'attempts:read',
+    'attempts:submit',
+    'reports:read',
+    'profile:read',
+    'profile:write',
+    'dashboard:read',
+  ],
+  GUEST: ['assessments:read', 'attempts:read', 'attempts:submit', 'profile:read', 'profile:write'],
 };
+
+const LEGACY_COMMERCIAL_ROLES = ['FREEMIUM', 'PREMIUM'] as const;
 
 export async function seedRolesAndPermissions(prisma: PrismaClient): Promise<SeededRoles> {
   const roleDefs = [
     {
       name: 'ADMIN',
       displayName: 'Admin',
-      description: 'Full platform administration',
+      description: 'Full platform administration (identity)',
+      isSystem: true,
+    },
+    {
+      name: 'USER',
+      displayName: 'Registered User',
+      description: 'Registered candidate identity — commercial access via subscription only',
       isSystem: true,
     },
     {
       name: 'GUEST',
       displayName: 'Guest User',
       description: 'Google-authenticated guest with locked results until profile completion',
-      isSystem: true,
-    },
-    {
-      name: 'FREEMIUM',
-      displayName: 'Registered User (Freemium)',
-      description: 'Registered free-tier candidate',
-      isSystem: true,
-    },
-    {
-      name: 'PREMIUM',
-      displayName: 'Registered User (Premium)',
-      description: 'Registered premium candidate',
       isSystem: true,
     },
   ] as const;
@@ -76,6 +86,20 @@ export async function seedRolesAndPermissions(prisma: PrismaClient): Promise<See
       create: role,
     });
     roleIds[role.name] = saved.id;
+  }
+
+  // Migrate any users still on legacy commercial roles → USER, then remove those roles
+  for (const legacyName of LEGACY_COMMERCIAL_ROLES) {
+    const legacy = await prisma.role.findUnique({ where: { name: legacyName } });
+    if (!legacy) continue;
+
+    await prisma.user.updateMany({
+      where: { roleId: legacy.id },
+      data: { roleId: roleIds.USER },
+    });
+
+    await prisma.rolePermission.deleteMany({ where: { roleId: legacy.id } });
+    await prisma.role.delete({ where: { id: legacy.id } });
   }
 
   for (const permission of PERMISSIONS) {
@@ -109,12 +133,11 @@ export async function seedRolesAndPermissions(prisma: PrismaClient): Promise<See
   }
 
   // eslint-disable-next-line no-console
-  console.info('[seed] Roles and permissions ready');
+  console.info('[seed] Roles and permissions ready (ADMIN / USER / GUEST)');
 
   return {
     adminRoleId: roleIds.ADMIN,
+    userRoleId: roleIds.USER,
     guestRoleId: roleIds.GUEST,
-    freemiumRoleId: roleIds.FREEMIUM,
-    premiumRoleId: roleIds.PREMIUM,
   };
 }

@@ -64,7 +64,7 @@ Admin ──► Users, Assessments, Questions, Reports, Settings, Audit, Analyti
 | Auth (refresh/logout/me)                            | Authenticated                                          |
 | Profiles / Dashboard / Gamification / Notifications | Authenticated (role-gated)                             |
 | Assessments (catalog free)                          | Authenticated Guest+                                   |
-| Assessments (premium)                               | Premium (or Admin)                                     |
+| Assessments (premium)                               | Authenticated `USER` + active `PREMIUM` subscription   |
 | Evaluation results                                  | Authenticated; **locked** for incomplete Guest profile |
 | Admin / Audit / Settings write / HR                 | Admin                                                  |
 | Health / public settings subset                     | Public                                                 |
@@ -124,7 +124,7 @@ Admin ──► Users, Assessments, Questions, Reports, Settings, Audit, Analyti
 
 1. **Attempt** is the transactional API root for submit → evaluate → JRS → report → XP.
 2. **Guest** may start the General Communication assessment; result payloads return `resultsLocked: true` until profile completion.
-3. **Premium** gates are enforced on resources tagged `accessTier: PREMIUM` and on premium report endpoints.
+3. **Premium** gates are enforced via **subscription middleware** (`requirePlan` / `requireFeature`) on resources tagged `accessTier: PREMIUM` and premium report endpoints — never via RBAC role.
 4. **Admin** never relies on frontend checks; every admin route requires `ADMIN`.
 5. AI endpoints expose **status + results**, never couple clients to provider internals.
 

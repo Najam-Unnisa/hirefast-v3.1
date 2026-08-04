@@ -58,7 +58,9 @@ export function requireAuth(req: AuthenticatedRequest, _res: Response, next: Nex
 }
 
 /**
- * RBAC middleware — restricts access to allowed roles.
+ * RBAC middleware — restricts access to allowed identity roles.
+ * Roles are identity only (`ADMIN` | `USER` | `GUEST`).
+ * Do NOT use this for Premium / commercial gating — use `requirePlan` / `requireFeature`.
  * Authorization decisions always occur on the backend.
  */
 export function authorize(...allowedRoles: UserRoleValue[]) {

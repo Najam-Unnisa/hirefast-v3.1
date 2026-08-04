@@ -56,9 +56,10 @@ Applied in migration `20260804075500_hirefast_check_constraints`:
 - Level `max_xp >= min_xp` when present
 - `attempt_number >= 1`
 
-## Unique constraints (selected)
+### Unique constraints (selected)
 
 - Role name, permission code, assessment code/slug, skill code, badge code, plan code, setting key
 - One evaluation / AI evaluation / JRS row per attempt
 - One response per (attempt, question)
 - One badge award per (user, badge)
+- **One ACTIVE/TRIALING subscription per user** (`user_subscriptions_one_active_per_user_idx` partial unique — migration `20260804090000_rbac_subscription_separation`)

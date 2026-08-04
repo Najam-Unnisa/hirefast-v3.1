@@ -299,7 +299,7 @@ paths:
               $ref: '#/components/schemas/ProfileWrite'
       responses:
         '200':
-          description: Profile marked complete; role may become FREEMIUM
+          description: Profile marked complete; identity role becomes USER (commercial plan via subscription)
           content:
             application/json:
               schema:
@@ -2303,7 +2303,8 @@ components:
 
     UserRole:
       type: string
-      enum: [ADMIN, GUEST, FREEMIUM, PREMIUM]
+      description: Identity role only — not a commercial tier
+      enum: [ADMIN, USER, GUEST]
     UserStatus:
       type: string
       enum: [ACTIVE, INACTIVE, SUSPENDED, PENDING_REGISTRATION]

@@ -44,6 +44,15 @@ See:
 - Runtime Swagger (`/docs`) documents **implemented Express routes only**
 - `docs/api/REVIEW.md` — API architecture review
 
+## Authorization model
+
+Identity, RBAC, and commercial access are separated:
+
+- `docs/architecture/AUTHORIZATION_FLOW.md` — Auth → RBAC → Subscription → Feature
+- `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md` — Blocker #2 resolution review
+
+Roles (`ADMIN` | `USER` | `GUEST`) are identity only. Plans (`FREE` | `PREMIUM`) are commercial only.
+
 ## Architecture review (gate)
 
 See:

@@ -22,16 +22,27 @@ export interface ApiErrorResponse {
 export type ApiResponse<T = unknown> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /**
- * Platform roles (RBAC). Authorization decisions must occur on the backend.
+ * Platform identity roles (RBAC).
+ * Commercial access is NOT encoded here — see SubscriptionPlanCode.
  */
 export enum UserRole {
   ADMIN = 'ADMIN',
+  USER = 'USER',
   GUEST = 'GUEST',
-  FREEMIUM = 'FREEMIUM',
-  PREMIUM = 'PREMIUM',
 }
 
 export type UserRoleValue = `${UserRole}`;
+
+/**
+ * Commercial subscription plan codes (single source of truth for paid access).
+ * Independent of RBAC roles — new plans do not require new roles.
+ */
+export enum SubscriptionPlanCode {
+  FREE = 'FREE',
+  PREMIUM = 'PREMIUM',
+}
+
+export type SubscriptionPlanCodeValue = `${SubscriptionPlanCode}`;
 
 /**
  * Pagination contracts shared by list endpoints.
@@ -75,7 +86,8 @@ export interface HealthCheckResponse {
 }
 
 /**
- * JWT token payload shape (non-sensitive claims only).
+ * JWT access-token payload — identity only.
+ * Do not put subscription tier in `role`.
  */
 export interface JwtPayload {
   sub: string;
