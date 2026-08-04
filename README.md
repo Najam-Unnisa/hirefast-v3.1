@@ -129,6 +129,7 @@ Follow:
 
 1. HireFast Master Context
 2. HireFast Engineering Standards v1.0
+3. Architecture Review (`docs/reviews/ARCHITECTURE_REVIEW_v1.md`) — **conditional approval; complete Phase 0 before domain features**
 
 Frozen stack and modular monolith architecture must not be changed unless explicitly instructed.
 

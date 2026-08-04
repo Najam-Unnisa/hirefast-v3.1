@@ -42,6 +42,16 @@ See:
 - `docs/api/openapi.yaml` — normative OpenAPI 3 contract (served at `/docs`)
 - `docs/api/REVIEW.md` — API architecture review
 
+## Architecture review (gate)
+
+See:
+
+- `docs/reviews/ARCHITECTURE_REVIEW_v1.md` — full critical review & scores
+- `docs/reviews/PHASE0_REMEDIATION.md` — mandatory P0 checklist
+- `docs/adr/` — Architecture Decision Records
+
+**Status:** Conditional approval — complete Phase 0 before domain features.
+
 ## Notes
 
 This repository currently contains the **engineering foundation**, **complete database architecture**, and **REST API contract**.
