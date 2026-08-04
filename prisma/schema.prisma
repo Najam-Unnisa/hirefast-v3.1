@@ -1,0 +1,23 @@
+// HireFast Prisma schema — foundation only.
+// Business tables will be added by future feature prompts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Platform bootstrap marker — ensures migrations and connectivity work
+/// before business models are introduced.
+model SchemaMeta {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("schema_meta")
+}
