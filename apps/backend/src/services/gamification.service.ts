@@ -313,6 +313,18 @@ export class GamificationService {
   }
 
   async onAssessmentCompleted(userId: string, attemptId: string, assessmentCode: string) {
+    const existingXp = await prisma.xpTransaction.findFirst({
+      where: {
+        userId,
+        referenceType: 'assessment_attempt',
+        referenceId: attemptId,
+        sourceType: 'ASSESSMENT_COMPLETE',
+      },
+    });
+    if (existingXp) {
+      return;
+    }
+
     await this.ensureUserGamification(userId);
     await this.recordDailyActivity(userId);
     await this.awardXp({

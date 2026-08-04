@@ -368,7 +368,8 @@ async function upsertUnlockedResults(input: {
 }
 
 /**
- * After guest unlock, materialize JRS/report/recommendations for completed attempts that lacked them.
+ * After guest unlock, backfill any missing JRS/report artifacts and award gamification
+ * that was skipped while resultsLocked was true.
  */
 export async function materializeUnlockedResultsForUser(userId: string): Promise<void> {
   const unlockedCompleted = await prisma.assessmentAttempt.findMany({
@@ -377,11 +378,11 @@ export async function materializeUnlockedResultsForUser(userId: string): Promise
       resultsLocked: false,
       status: { in: ['COMPLETED', 'SUBMITTED', 'EVALUATING'] },
       evaluation: { status: 'COMPLETED' },
-      jobReadinessScore: { is: null },
     },
     include: {
       evaluation: true,
       aiEvaluation: true,
+      jobReadinessScore: true,
       assessment: {
         include: { skills: { include: { skill: true } } },
       },
@@ -389,29 +390,35 @@ export async function materializeUnlockedResultsForUser(userId: string): Promise
   });
 
   for (const attempt of unlockedCompleted) {
-    const percentage = Number(attempt.evaluation?.percentage ?? 0);
-    const band = percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL';
-    const strengths = parseBulletList(attempt.aiEvaluation?.strengths) ?? ['Completed assessment'];
-    const weaknesses = parseBulletList(attempt.aiEvaluation?.weaknesses) ?? ['Continue practicing'];
-    const summary =
-      attempt.aiEvaluation?.summary ??
-      'Assessment evaluation completed. Review your report for details.';
+    if (!attempt.jobReadinessScore) {
+      const percentage = Number(attempt.evaluation?.percentage ?? 0);
+      const band = percentage >= 80 ? 'READY' : percentage >= 60 ? 'DEVELOPING' : 'FOUNDATIONAL';
+      const strengths = parseBulletList(attempt.aiEvaluation?.strengths) ?? [
+        'Completed assessment',
+      ];
+      const weaknesses = parseBulletList(attempt.aiEvaluation?.weaknesses) ?? [
+        'Continue practicing',
+      ];
+      const summary =
+        attempt.aiEvaluation?.summary ??
+        'Assessment evaluation completed. Review your report for details.';
 
-    await prisma.$transaction(async (tx) => {
-      await upsertUnlockedResults({
-        tx,
-        attemptId: attempt.id,
-        userId,
-        percentage,
-        band,
-        evaluatedAt: new Date(),
-        summary,
-        strengths,
-        weaknesses,
-        assessmentTitle: attempt.assessment.title,
-        skills: attempt.assessment.skills,
+      await prisma.$transaction(async (tx) => {
+        await upsertUnlockedResults({
+          tx,
+          attemptId: attempt.id,
+          userId,
+          percentage,
+          band,
+          evaluatedAt: new Date(),
+          summary,
+          strengths,
+          weaknesses,
+          assessmentTitle: attempt.assessment.title,
+          skills: attempt.assessment.skills,
+        });
       });
-    });
+    }
 
     if (attempt.status !== 'COMPLETED') {
       await prisma.assessmentAttempt.update({
