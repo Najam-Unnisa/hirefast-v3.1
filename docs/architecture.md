@@ -13,6 +13,7 @@ HireFast is a modular monolith monorepo.
 - `packages/shared-types` — shared TypeScript contracts
 - `packages/shared-utils` — shared helpers (API envelope, pagination, dates)
 - `packages/shared-config` — shared env helpers and design tokens
+- `packages/shared-ui` — shared UI primitives, providers, stores, theme (`docs/architecture/SHARED_UI.md`)
 
 ## Infrastructure
 

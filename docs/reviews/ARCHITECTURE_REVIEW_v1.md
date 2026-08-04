@@ -19,7 +19,7 @@ Critical gaps remain:
 1. **Contract–implementation drift** — OpenAPI documents ~81 paths; backend mounts **only** `/health` (design-time contract vs runtime — expected under Architecture-First until Feature Implementation).
 2. **~~RBAC model is incoherent at the identity boundary~~** — **Resolved** (roles `ADMIN`/`USER`/`GUEST`; commercial via `FREE`/`PREMIUM` plans). See `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md`.
 3. **~~Auth is incomplete~~** — **Clarified:** Authentication **Foundation** is implemented (JWT, middleware, Google OAuth config/provider, Redis, refresh-token store). Auth **HTTP APIs** (login/refresh/logout/session) are intentionally deferred to **Feature Implementation** — not an architectural defect. See `docs/architecture/AUTHENTICATION_FOUNDATION.md`.
-4. **Frontend is duplicated scaffolding** — candidate and admin portals share ~17 identical UI files with no `shared-ui` package; auth provider is a stub (FE feature work).
+4. **~~Frontend is duplicated scaffolding~~** — **Resolved** via `@hirefast/shared-ui` (see `docs/architecture/SHARED_UI.md`). Portal pages/constants remain app-local by design.
 5. **Operational readiness is shallow** — no monitoring/APM, no backup/DR runbooks, no e2e, CI omits lint/format, workers are empty shells.
 6. **Security posture is “scaffolded, not enforced”** — Helmet/CORS/rate-limit exist globally; IDOR, idempotency, request IDs, permission checks, and scoped rate limits do not (enforcement lands with feature routes).
 
@@ -61,7 +61,7 @@ Critical gaps remain:
 ### Architecture & structure
 
 - **Module folders without modules** — `repositories/`, `services/`, `shared/` are placeholders; only `modules/health` exists. Risk: teams invent inconsistent patterns under delivery pressure.
-- **No shared UI package** — candidate/admin duplicate the entire UI kit. Violates DRY and guarantees visual/behavior drift.
+- **~~No shared UI package~~** — **Resolved** (`@hirefast/shared-ui`).
 - **Over-declared frontend deps** — `framer-motion`, React Hook Form, Zod listed but unused in portal source.
 - **Role vs subscription conflation** — Product wants both RBAC and billing; schema/docs claim separation, then seed `FREEMIUM`/`PREMIUM` as roles with **identical permissions**. Authorization will become “if role === PREMIUM || subscription.active” forever.
 
@@ -119,7 +119,7 @@ Critical gaps remain:
 | **~~Premium = role~~**         | —        | **Resolved** — commercial access via subscription only                                   |
 | **Auth Feature APIs deferred** | Info     | Expected under Architecture-First; foundation ready — see `AUTHENTICATION_FOUNDATION.md` |
 | **Empty workers**              | High     | AI/report/email will land in HTTP handlers “just this once”                              |
-| **UI fork**                    | High     | Design system divergence between portals                                                 |
+| **~~UI fork~~**                | —        | **Resolved** — `@hirefast/shared-ui`                                                     |
 | **No observability**           | High     | Cannot operate AI cost, queue lag, or auth failures in prod                              |
 | **IDOR if rushed**             | Critical | Attempt/report/file IDs are guessable UUIDs still need ownership checks — easy to forget |
 | **Permission table theater**   | Medium   | Maintained seed data that auth never reads → false sense of RBAC                         |
@@ -134,7 +134,7 @@ Critical gaps remain:
 | Auth foundation   | ✅ JWT, middleware, Google provider, Redis refresh store — `docs/architecture/AUTHENTICATION_FOUNDATION.md`         |
 | Auth feature APIs | ⏳ Deferred — login/refresh/logout/session HTTP (Feature Implementation phase)                                      |
 | Domain modules    | users, assessments, attempts, evaluation, reports, dashboard, gamification, notifications, subscriptions, admin, HR |
-| Frontend          | Shared UI package, auth session UX, protected routes, real pages, form patterns, a11y flows                         |
+| Frontend          | Auth session UX, protected routes, real pages, form patterns, a11y flows (UI kit shared)                            |
 | AI                | Prompt templates versioning, job processors, retry/DLQ policy, token/cost accounting, provider failover             |
 | Storage           | Presigned upload API, MIME/size enforcement middleware, malware scan hook                                           |
 | Platform          | Idempotency middleware, request ID middleware, structured logger (pino), feature flags                              |
@@ -150,7 +150,7 @@ Critical gaps remain:
 
 1. **~~Resolve RBAC vs billing~~** — **Done** (ADR-010 Accepted).
 2. **Authentication Foundation** — **Done** (JWT, middleware, Google provider, Redis refresh store). Auth **Feature Implementation** (HTTP APIs) is intentionally deferred — not a P0 architecture defect. See `AUTHENTICATION_FOUNDATION.md`.
-3. **Extract `packages/shared-ui`** (or `packages/ui`) and delete portal duplicates.
+3. **~~Extract `packages/shared-ui`~~** — **Done** (see `docs/architecture/SHARED_UI.md`).
 4. **Standardize cross-cutting middleware**  
    Request ID, consistent 429 code (`RATE_LIMITED`), align rate-limit defaults with STANDARDS, idempotency for future submit.
 5. **Worker bootstrap**  
@@ -197,7 +197,7 @@ Critical gaps remain:
                          ┌──────────────────────────────────────┐
                          │         Clients (Next.js)            │
                          │  candidate-portal │ admin-portal     │
-                         │  [duplicated UI today — fix P0]      │
+                         │  both consume @hirefast/shared-ui    │
                          └───────────────┬──────────────────────┘
                                          │ HTTPS / JSON
                                          │ Bearer JWT
@@ -245,7 +245,7 @@ Critical gaps remain:
 | ADR     | Decision                                               | Status       | Challenge                                                           |
 | ------- | ------------------------------------------------------ | ------------ | ------------------------------------------------------------------- |
 | ADR-001 | Modular monolith (Express) over microservices          | **Accepted** | Correct for current team/stage                                      |
-| ADR-002 | pnpm monorepo: 2 Next apps + backend + shared packages | **Accepted** | Missing shared-ui package                                           |
+| ADR-002 | pnpm monorepo: 2 Next apps + backend + shared packages | **Accepted** | Includes `@hirefast/shared-ui`                                      |
 | ADR-003 | PostgreSQL + Prisma; UUID PKs; snake_case DB maps      | **Accepted** | —                                                                   |
 | ADR-004 | REST `/api/v1` + standard envelope                     | **Accepted** | —                                                                   |
 | ADR-005 | Google OAuth only (no password table)                  | **Accepted** | Foundation ready; Feature APIs deferred (Architecture-First)        |
@@ -256,7 +256,7 @@ Critical gaps remain:
 | ADR-010 | Roles = ADMIN/USER/GUEST; plans = commercial           | **Accepted** | Separated — see `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md` |
 | ADR-011 | OpenAPI YAML is Swagger source of truth                | **Accepted** | Must not diverge from code                                          |
 | ADR-012 | Soft deletes selective                                 | **Accepted** | Index all soft-delete columns used in queries                       |
-| ADR-013 | Dual portals (candidate/admin)                         | **Accepted** | Share UI package                                                    |
+| ADR-013 | Dual portals (candidate/admin)                         | **Accepted** | Shared UI extracted — `SHARED_UI.md`                                |
 
 ---
 
@@ -279,7 +279,7 @@ Critical gaps remain:
 | Secrets management (non-local)                           | ❌                                               |
 | e2e / contract tests                                     | ❌                                               |
 | CI lint + security gates                                 | ❌                                               |
-| Shared UI / DX for two portals                           | ❌                                               |
+| Shared UI / DX for two portals                           | ✅ (`@hirefast/shared-ui`)                       |
 | Rate-limit & idempotency per STANDARDS                   | ❌                                               |
 | Staging environment                                      | ❌                                               |
 
@@ -298,7 +298,7 @@ The HireFast architecture is **approved as a foundation blueprint**. Authenticat
 
 1. ~~Fix **role vs subscription / entitlement** model~~ — **Done** (ADR-010).
 2. ~~Authentication Foundation~~ — **Done** (see `AUTHENTICATION_FOUNDATION.md`). Auth HTTP APIs → Feature Implementation.
-3. Extract **shared UI** and stop duplicating portals.
+3. ~~Extract **shared UI** and stop duplicating portals~~ — **Done** (`@hirefast/shared-ui`).
 4. Establish **worker/process conventions** for BullMQ (even with a noop consumer).
 5. Add **request ID + consistent error/rate-limit codes**; freeze OpenAPI ambiguities (report status codes).
 6. Add **CI lint** and a written rule: _no module merges without tests for authz ownership_.
@@ -307,7 +307,7 @@ The HireFast architecture is **approved as a foundation blueprint**. Authenticat
 
 - Implement assessments/AI/reports **without** using the auth foundation (JWT middleware + subscription gates) when those routes ship.
 - Invent parallel session/OAuth helpers instead of `providers/auth` + `RefreshTokenStore`.
-- Copy portal UI per feature instead of extracting shared-ui.
+- Reintroduce portal UI forks instead of extending `@hirefast/shared-ui`.
 - Run evaluation/AI **inside HTTP handlers** because workers “aren’t ready.”
 - Treat OpenAPI as aspirational while shipping incompatible routes.
 
@@ -329,7 +329,7 @@ Consume the foundation when features begin; do not rebuild it.
 | Empty workers                                                 | `apps/backend/src/jobs/worker.ts`                                                |
 | 38 Prisma models                                              | `prisma/schema.prisma`                                                           |
 | OpenAPI ~81 paths                                             | `docs/api/openapi.yaml`                                                          |
-| Identical portal UI                                           | `apps/*/src/components/ui/*`                                                     |
+| Shared UI package                                             | `packages/shared-ui`                                                             |
 | FE auth stub (feature phase)                                  | `apps/*/src/components/providers/auth-provider.tsx`                              |
 | CI scope                                                      | `.github/workflows/ci.yml`                                                       |
 | Identity roles ADMIN/USER/GUEST                               | `apps/backend/prisma/seeds/roles-permissions.ts`                                 |

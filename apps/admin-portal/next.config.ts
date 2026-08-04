@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     '@hirefast/shared-types',
     '@hirefast/shared-utils',
     '@hirefast/shared-config',
+    '@hirefast/shared-ui',
   ],
 };
 
