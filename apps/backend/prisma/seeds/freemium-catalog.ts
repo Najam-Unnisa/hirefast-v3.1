@@ -120,12 +120,14 @@ export async function seedFreemiumCatalog(prisma: PrismaClient): Promise<void> {
     }
   }
 
-  await prisma.assessment.upsert({
+  const leadership = await prisma.assessment.upsert({
     where: { code: 'ADVANCED_LEADERSHIP' },
     update: {
       title: 'Advanced Leadership Communication',
       slug: 'advanced-leadership-communication',
       description: 'Premium deep-dive on leadership communication and stakeholder alignment.',
+      instructions:
+        'Answer as a people leader. Focus on clarity, influence, and stakeholder alignment.',
       status: 'PUBLISHED',
       accessTier: 'PREMIUM',
       durationMinutes: 25,
@@ -139,7 +141,8 @@ export async function seedFreemiumCatalog(prisma: PrismaClient): Promise<void> {
       slug: 'advanced-leadership-communication',
       title: 'Advanced Leadership Communication',
       description: 'Premium deep-dive on leadership communication and stakeholder alignment.',
-      instructions: 'Premium subscribers only.',
+      instructions:
+        'Answer as a people leader. Focus on clarity, influence, and stakeholder alignment.',
       status: 'PUBLISHED',
       accessTier: 'PREMIUM',
       durationMinutes: 25,
@@ -149,6 +152,117 @@ export async function seedFreemiumCatalog(prisma: PrismaClient): Promise<void> {
       publishedAt: new Date(),
     },
   });
+
+  const premiumQuestions = [
+    {
+      code: 'AL_01',
+      prompt:
+        'A stakeholder challenges your roadmap in a meeting. Which response best demonstrates leadership communication?',
+      options: [
+        {
+          label: 'Defend the plan without acknowledging their concern',
+          value: 'defend',
+          isCorrect: false,
+        },
+        {
+          label:
+            'Acknowledge the concern, restate shared goals, and propose a clear next decision point',
+          value: 'align',
+          isCorrect: true,
+        },
+        { label: 'Defer entirely and avoid the topic', value: 'defer', isCorrect: false },
+      ],
+    },
+    {
+      code: 'AL_02',
+      prompt: 'Which update format is most effective for an executive status message?',
+      options: [
+        {
+          label: 'Outcome, risk, ask — in that order, with one clear decision needed',
+          value: 'outcome',
+          isCorrect: true,
+        },
+        {
+          label: 'A chronological list of every activity this week',
+          value: 'chrono',
+          isCorrect: false,
+        },
+        { label: 'Only metrics without context', value: 'metrics', isCorrect: false },
+      ],
+    },
+    {
+      code: 'AL_03',
+      prompt:
+        'True or false: Effective leaders adapt message detail to the audience while keeping the core ask consistent.',
+      options: [
+        { label: 'True', value: 'true', isCorrect: true },
+        { label: 'False', value: 'false', isCorrect: false },
+      ],
+      questionType: 'TRUE_FALSE' as const,
+    },
+    {
+      code: 'AL_04',
+      prompt:
+        'Write two sentences giving constructive feedback to a teammate whose stakeholder update was unclear.',
+      options: undefined,
+      questionType: 'SHORT_TEXT' as const,
+    },
+    {
+      code: 'AL_05',
+      prompt: 'When aligning cross-functional teams, the strongest opening is usually:',
+      options: [
+        { label: 'Listing every disagreement first', value: 'disagree', isCorrect: false },
+        {
+          label: 'Naming the shared outcome and decision criteria before debating options',
+          value: 'shared',
+          isCorrect: true,
+        },
+        { label: 'Assigning blame for delays', value: 'blame', isCorrect: false },
+      ],
+    },
+  ];
+
+  for (const [index, definition] of premiumQuestions.entries()) {
+    const question = await prisma.question.upsert({
+      where: {
+        assessmentId_code: {
+          assessmentId: leadership.id,
+          code: definition.code,
+        },
+      },
+      update: {
+        prompt: definition.prompt,
+        questionType: definition.questionType ?? 'MULTIPLE_CHOICE',
+        sortOrder: index + 1,
+        points: definition.questionType === 'SHORT_TEXT' ? 2 : 1,
+        isRequired: true,
+        deletedAt: null,
+      },
+      create: {
+        assessmentId: leadership.id,
+        code: definition.code,
+        prompt: definition.prompt,
+        questionType: definition.questionType ?? 'MULTIPLE_CHOICE',
+        sortOrder: index + 1,
+        points: definition.questionType === 'SHORT_TEXT' ? 2 : 1,
+        isRequired: true,
+      },
+    });
+
+    if (definition.options) {
+      await prisma.questionOption.deleteMany({ where: { questionId: question.id } });
+      await prisma.questionOption.createMany({
+        data: definition.options.map((option, optionIndex) => ({
+          questionId: question.id,
+          label: option.label,
+          value: option.value,
+          isCorrect: option.isCorrect,
+          sortOrder: optionIndex + 1,
+          points: option.isCorrect ? 1 : 0,
+        })),
+      });
+    }
+  }
 
   // eslint-disable-next-line no-console
   console.info('[seed] Freemium catalog assessments ready');

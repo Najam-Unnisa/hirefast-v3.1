@@ -448,6 +448,111 @@ export class UsersService {
     });
     return items;
   }
+
+  async dismissRecommendation(userId: string, recommendationId: string) {
+    const existing = await prisma.learningRecommendation.findFirst({
+      where: { id: recommendationId, userId, deletedAt: null },
+    });
+    if (!existing) {
+      throw new NotFoundError('Recommendation not found.');
+    }
+    return prisma.learningRecommendation.update({
+      where: { id: recommendationId },
+      data: { isDismissed: true },
+    });
+  }
+
+  async getSkillAnalytics(userId: string) {
+    const history = await prisma.jobReadinessScore.findMany({
+      where: { userId },
+      orderBy: { calculatedAt: 'asc' },
+      include: {
+        skillScores: {
+          include: { skill: { select: { id: true, code: true, name: true } } },
+        },
+        attempt: {
+          select: {
+            id: true,
+            assessment: { select: { title: true, accessTier: true } },
+          },
+        },
+      },
+    });
+
+    const bySkill = new Map<
+      string,
+      {
+        skillId: string;
+        skillCode: string;
+        skillName: string;
+        scores: Array<{ score: number; calculatedAt: Date; assessmentTitle: string }>;
+      }
+    >();
+
+    for (const point of history) {
+      for (const skillScore of point.skillScores) {
+        const key = skillScore.skillId;
+        const entry = bySkill.get(key) ?? {
+          skillId: skillScore.skillId,
+          skillCode: skillScore.skill.code,
+          skillName: skillScore.skill.name,
+          scores: [],
+        };
+        entry.scores.push({
+          score: Number(skillScore.score),
+          calculatedAt: point.calculatedAt,
+          assessmentTitle: point.attempt.assessment.title,
+        });
+        bySkill.set(key, entry);
+      }
+    }
+
+    const skills = [...bySkill.values()].map((skill) => {
+      const latest = skill.scores[skill.scores.length - 1]?.score ?? 0;
+      const first = skill.scores[0]?.score ?? latest;
+      const average =
+        skill.scores.reduce((sum, item) => sum + item.score, 0) / Math.max(1, skill.scores.length);
+      return {
+        skillId: skill.skillId,
+        skillCode: skill.skillCode,
+        skillName: skill.skillName,
+        latestScore: latest,
+        firstScore: first,
+        averageScore: Number(average.toFixed(2)),
+        delta: Number((latest - first).toFixed(2)),
+        samples: skill.scores.length,
+        trend: skill.scores,
+      };
+    });
+
+    skills.sort((a, b) => a.latestScore - b.latestScore);
+
+    trackEvent({
+      eventName: 'skill_analytics.viewed',
+      userId,
+      properties: { skillCount: skills.length },
+    });
+
+    await gamificationService.awardBadge(userId, 'SKILL_ANALYST').catch(() => undefined);
+
+    return {
+      skills,
+      weakest: skills.slice(0, 3),
+      strongest: [...skills].sort((a, b) => b.latestScore - a.latestScore).slice(0, 3),
+      distribution: {
+        ready: skills.filter((s) => s.latestScore >= 80).length,
+        developing: skills.filter((s) => s.latestScore >= 60 && s.latestScore < 80).length,
+        foundational: skills.filter((s) => s.latestScore < 60).length,
+      },
+      jrsHistory: history.map((point) => ({
+        overallScore: Number(point.overallScore),
+        band: point.band,
+        calculatedAt: point.calculatedAt,
+        assessmentTitle: point.attempt.assessment.title,
+        accessTier: point.attempt.assessment.accessTier,
+      })),
+    };
+  }
 }
 
 function extractTagged(bio: string | null | undefined, tag: 'education' | 'skills'): string | null {

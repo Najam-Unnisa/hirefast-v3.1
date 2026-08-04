@@ -35,6 +35,82 @@ export class SubscriptionsController {
       next(error);
     }
   }
+
+  async validateFeature(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await subscriptionsService.validateFeature(req.user!.sub, req.body?.featureKey),
+        'Feature validated.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async activatePremium(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await subscriptionsService.activatePremium(req.user!.sub),
+        'Premium activated.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async downgrade(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await subscriptionsService.downgradeToFree(req.user!.sub),
+        'Downgraded to Free plan.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async expireForTesting(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await subscriptionsService.expirePremiumForTesting(req.user!.sub),
+        'Premium expired for testing.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async listPremiumAssessments(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await subscriptionsService.listPremiumAssessments(req.user!.sub),
+        'Premium assessments retrieved.',
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const subscriptionsController = new SubscriptionsController();

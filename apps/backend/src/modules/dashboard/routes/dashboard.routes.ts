@@ -17,5 +17,11 @@ dashboardRouter.get('/me', (req, res, next) => dashboardController.getMe(req, re
 dashboardRouter.get('/me/activity', (req, res, next) =>
   dashboardController.getActivity(req, res, next),
 );
+dashboardRouter.get(
+  '/me/progress',
+  requireFeature(PLAN_FEATURES.ANALYTICS_ADVANCED),
+  (req, res, next) => dashboardController.getProgress(req, res, next),
+);
+dashboardRouter.get('/me/stats', (req, res, next) => dashboardController.getStats(req, res, next));
 
 export { dashboardRouter };

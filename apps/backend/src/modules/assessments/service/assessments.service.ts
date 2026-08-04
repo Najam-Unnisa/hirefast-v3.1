@@ -199,8 +199,20 @@ export class AssessmentsService {
     trackEvent({
       eventName: 'assessment.started',
       userId,
-      properties: { assessmentId, attemptId: attempt.id, role },
+      properties: {
+        assessmentId,
+        attemptId: attempt.id,
+        role,
+        accessTier: assessment.accessTier,
+      },
     });
+    if (assessment.accessTier === 'PREMIUM') {
+      trackEvent({
+        eventName: 'premium.assessment_started',
+        userId,
+        properties: { assessmentId, attemptId: attempt.id },
+      });
+    }
     return attempt;
   }
 

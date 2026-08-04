@@ -37,6 +37,12 @@ export function ProcessingPanel({ attemptId }: ProcessingPanelProps): React.Reac
 
         if (status.status === 'COMPLETED' || status.evaluationStatus === 'COMPLETED') {
           trackClientEvent('evaluation.completed', { attemptId });
+          if (!isGuest) {
+            trackClientEvent('premium.feature_engagement', {
+              feature: 'assessment_evaluation',
+              attemptId,
+            });
+          }
           router.replace(nextPath());
           return;
         }

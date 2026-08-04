@@ -55,6 +55,8 @@ export function ReportsList(): React.ReactElement {
         if (!cancelled) {
           setDetail(report);
           trackClientEvent('ai_report.viewed', { reportId: selectedId });
+          trackClientEvent('premium.report_viewed', { reportId: selectedId });
+          trackClientEvent('premium.feature_engagement', { feature: 'ai_report' });
         }
       } catch (err) {
         if (!cancelled) {

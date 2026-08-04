@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ROLES } from '../../../constants/roles';
+import { env } from '../../../config/env';
 import { authenticate, authorize } from '../../../middlewares/auth.middleware';
 import { subscriptionsController } from '../controller/subscriptions.controller';
 
@@ -20,5 +21,33 @@ subscriptionsRouter.get(
   authorize(ROLES.USER, ROLES.ADMIN),
   (req, res, next) => subscriptionsController.getFeatures(req, res, next),
 );
+subscriptionsRouter.post(
+  '/me/validate-feature',
+  authenticate,
+  authorize(ROLES.USER, ROLES.ADMIN),
+  (req, res, next) => subscriptionsController.validateFeature(req, res, next),
+);
+subscriptionsRouter.post(
+  '/me/downgrade',
+  authenticate,
+  authorize(ROLES.USER, ROLES.ADMIN),
+  (req, res, next) => subscriptionsController.downgrade(req, res, next),
+);
+
+if (!env.isProduction) {
+  // Billing checkout is deferred — local/dev only may simulate Premium entitlement.
+  subscriptionsRouter.post(
+    '/me/activate-premium',
+    authenticate,
+    authorize(ROLES.USER, ROLES.ADMIN),
+    (req, res, next) => subscriptionsController.activatePremium(req, res, next),
+  );
+  subscriptionsRouter.post(
+    '/dev/expire-premium',
+    authenticate,
+    authorize(ROLES.USER, ROLES.ADMIN),
+    (req, res, next) => subscriptionsController.expireForTesting(req, res, next),
+  );
+}
 
 export { subscriptionsRouter };

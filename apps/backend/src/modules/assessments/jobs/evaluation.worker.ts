@@ -1,7 +1,9 @@
 import { prisma } from '../../../config/database';
 import { createWorker, QUEUE_NAMES } from '../../../jobs';
+import { PLAN_FEATURES } from '../../../constants/subscription';
 import { trackEvent } from '../../../services/analytics.service';
 import { gamificationService } from '../../../services/gamification.service';
+import { userHasFeature } from '../../../services/subscription-access.service';
 
 export interface AssessmentEvaluationJob {
   attemptId: string;
@@ -163,14 +165,27 @@ async function evaluateAttempt(attemptId: string): Promise<{ percentage: number 
         attempt.userId,
         attemptId,
         attempt.assessment.code,
+        attempt.assessment.accessTier,
       );
     }
 
     trackEvent({
       eventName: 'evaluation.completed',
       userId: attempt.userId,
-      properties: { attemptId, percentage, resultsLocked: attempt.resultsLocked },
+      properties: {
+        attemptId,
+        percentage,
+        resultsLocked: attempt.resultsLocked,
+        accessTier: attempt.assessment.accessTier,
+      },
     });
+    if (attempt.assessment.accessTier === 'PREMIUM' && !attempt.resultsLocked) {
+      trackEvent({
+        eventName: 'premium.assessment_completed',
+        userId: attempt.userId,
+        properties: { attemptId, percentage },
+      });
+    }
     return { percentage };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Assessment evaluation failed.';
@@ -347,20 +362,38 @@ async function upsertUnlockedResults(input: {
     })),
   });
 
-  // Freemium improvement tips (basic recommendations). Premium learning modules stay gated elsewhere.
+  // Freemium improvement tips; Premium users receive richer priority paths.
   await tx.learningRecommendation.deleteMany({
     where: { userId, source: 'assessment_evaluation', deletedAt: null },
   });
 
   const recommendationSkills = skills.slice(0, 3);
+  const isPremiumUser = await userHasFeature(userId, PLAN_FEATURES.LEARNING_RECOMMENDATIONS);
   for (const [index, assessmentSkill] of recommendationSkills.entries()) {
     await tx.learningRecommendation.create({
       data: {
         userId,
         skillId: assessmentSkill.skillId,
-        title: `Improve ${assessmentSkill.skill.name}`,
-        description: `Based on your ${assessmentTitle} results, focus on practical drills for ${assessmentSkill.skill.name.toLowerCase()}.`,
+        title: isPremiumUser
+          ? `Priority path: ${assessmentSkill.skill.name}`
+          : `Improve ${assessmentSkill.skill.name}`,
+        description: isPremiumUser
+          ? `Premium coaching focus for ${assessmentSkill.skill.name.toLowerCase()} after ${assessmentTitle}. Practice one targeted drill this week, then reassess.`
+          : `Based on your ${assessmentTitle} results, focus on practical drills for ${assessmentSkill.skill.name.toLowerCase()}.`,
         priority: index + 1,
+        source: 'assessment_evaluation',
+      },
+    });
+  }
+
+  if (isPremiumUser) {
+    await tx.learningRecommendation.create({
+      data: {
+        userId,
+        title: 'Suggested improvement path',
+        description:
+          'Review skill analytics, complete one Premium assessment this week, then compare your JRS trend on the Progress page.',
+        priority: 10,
         source: 'assessment_evaluation',
       },
     });
@@ -427,7 +460,12 @@ export async function materializeUnlockedResultsForUser(userId: string): Promise
       });
     }
 
-    await gamificationService.onAssessmentCompleted(userId, attempt.id, attempt.assessment.code);
+    await gamificationService.onAssessmentCompleted(
+      userId,
+      attempt.id,
+      attempt.assessment.code,
+      attempt.assessment.accessTier,
+    );
   }
 }
 

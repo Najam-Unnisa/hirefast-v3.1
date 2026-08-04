@@ -312,7 +312,12 @@ export class GamificationService {
     await this.awardBadge(userId, 'PROFILE_COMPLETE');
   }
 
-  async onAssessmentCompleted(userId: string, attemptId: string, assessmentCode: string) {
+  async onAssessmentCompleted(
+    userId: string,
+    attemptId: string,
+    assessmentCode: string,
+    accessTier: 'FREE' | 'PREMIUM' | string = 'FREE',
+  ) {
     const existingXp = await prisma.xpTransaction.findFirst({
       where: {
         userId,
@@ -327,17 +332,22 @@ export class GamificationService {
 
     await this.ensureUserGamification(userId);
     await this.recordDailyActivity(userId);
+    const isPremiumAssessment = accessTier === 'PREMIUM';
     await this.awardXp({
       userId,
-      eventKey: 'assessment.completed',
+      eventKey: isPremiumAssessment ? 'premium.assessment.completed' : 'assessment.completed',
       sourceType: 'ASSESSMENT_COMPLETE',
+      amount: isPremiumAssessment ? 150 : undefined,
       referenceType: 'assessment_attempt',
       referenceId: attemptId,
-      description: 'Assessment completed',
+      description: isPremiumAssessment ? 'Premium assessment completed' : 'Assessment completed',
     });
     await this.awardBadge(userId, 'FIRST_ASSESSMENT');
     if (assessmentCode === 'GENERAL_COMMUNICATION') {
       await this.awardBadge(userId, 'COMMUNICATION_READY');
+    }
+    if (isPremiumAssessment) {
+      await this.awardBadge(userId, 'PREMIUM_ASSESSMENT');
     }
   }
 }
