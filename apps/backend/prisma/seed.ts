@@ -7,6 +7,7 @@ import { seedRolesAndPermissions } from './seeds/roles-permissions';
 import { seedAdminUser } from './seeds/admin-user';
 import { seedPlatformSettings } from './seeds/platform-settings';
 import { seedAssessmentTaxonomy } from './seeds/assessment-taxonomy';
+import { seedGuestAssessment } from './seeds/guest-assessment';
 import { seedGamification } from './seeds/gamification';
 import { seedSubscriptionPlans } from './seeds/subscription-plans';
 
@@ -20,6 +21,7 @@ async function main(): Promise<void> {
   await seedAdminUser(prisma, roles.adminRoleId);
   await seedPlatformSettings(prisma);
   await seedAssessmentTaxonomy(prisma);
+  await seedGuestAssessment(prisma);
   await seedGamification(prisma);
   await seedSubscriptionPlans(prisma);
 
