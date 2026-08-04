@@ -18,9 +18,11 @@ HireFast is a modular monolith monorepo.
 ## Infrastructure
 
 - PostgreSQL + Prisma ORM (full platform schema — see `docs/database/`)
-- Redis + BullMQ
+- Redis + BullMQ queue infrastructure (`docs/architecture/BULLMQ_FOUNDATION.md`)
 - Cloudflare R2 (S3-compatible) storage abstraction
 - OpenAI via AI provider abstraction
+
+Feature job **processors** are deferred to Feature Implementation (module-owned workers).
 
 ## Database architecture
 
@@ -52,6 +54,8 @@ Identity, RBAC, and commercial access are separated:
 - `docs/architecture/AUTHORIZATION_FLOW.md` — Auth → RBAC → Subscription → Feature
 - `docs/architecture/RBAC_SUBSCRIPTION_SEPARATION.md` — Blocker #2 resolution review
 - `docs/architecture/AUTHENTICATION_FOUNDATION.md` — Foundation (✅) vs Feature Implementation (⏳)
+- `docs/architecture/BULLMQ_FOUNDATION.md` — Queues (✅) vs feature workers (⏳)
+- `docs/architecture/SHARED_UI.md` — Shared UI package
 
 Roles (`ADMIN` | `USER` | `GUEST`) are identity only. Plans (`FREE` | `PREMIUM`) are commercial only.
 

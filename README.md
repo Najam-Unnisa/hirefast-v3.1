@@ -34,7 +34,7 @@ docs/                 # Architecture notes
 | Backend         | Node.js, Express.js, TypeScript                                                                                 |
 | Database        | PostgreSQL + Prisma ORM                                                                                         |
 | Auth foundation | Google OAuth provider, JWT utilities, RBAC middleware, Redis refresh-token store                                |
-| Jobs            | Redis + BullMQ                                                                                                  |
+| Jobs            | Redis + BullMQ queue infrastructure (workers owned by feature modules later)                                    |
 | AI              | Provider abstraction (OpenAI implementation)                                                                    |
 | Storage         | Cloudflare R2 (S3-compatible) abstraction                                                                       |
 | Docs            | Swagger/OpenAPI at `/docs`                                                                                      |

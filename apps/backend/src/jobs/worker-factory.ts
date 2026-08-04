@@ -2,12 +2,22 @@ import { Worker, type Processor, type WorkerOptions } from 'bullmq';
 import { getBullConnection } from './queue-manager';
 import { logger } from '../utils/logger';
 
+/**
+ * Worker factory — foundation helper for Feature Implementation modules.
+ *
+ * Feature modules call `createWorker` when they own a processor, e.g.:
+ *   - Assessment module → AI evaluation worker
+ *   - Reporting module → report generation worker
+ *   - Notification / Email modules → their workers
+ *
+ * The API process does NOT centrally register business workers at boot.
+ * There is no `registerJobs()` placeholder — workers are feature-owned.
+ *
+ * See: docs/architecture/BULLMQ_FOUNDATION.md
+ */
+
 const workers: Worker[] = [];
 
-/**
- * Worker configuration helpers.
- * Do not register real job processors during project initialization.
- */
 export function createWorker<T = unknown, R = unknown>(
   queueName: string,
   processor: Processor<T, R>,
@@ -31,20 +41,25 @@ export function createWorker<T = unknown, R = unknown>(
   });
 
   workers.push(worker as Worker);
-  logger.info('Worker created', { queue: queueName });
+  logger.info('Worker registered by feature module', { queue: queueName });
   return worker;
 }
 
+/**
+ * Graceful shutdown helper — closes any workers that feature modules registered
+ * in this process (none during foundation-only boot).
+ */
 export async function closeAllWorkers(): Promise<void> {
+  if (workers.length === 0) {
+    logger.info('No feature workers to close');
+    return;
+  }
+
   await Promise.all(workers.map((worker) => worker.close()));
   workers.length = 0;
   logger.info('All workers closed');
 }
 
-/**
- * Placeholder for future job registration.
- * Feature modules will call this to attach processors.
- */
-export function registerJobs(): void {
-  logger.info('Job registration skipped — no feature jobs in foundation');
+export function getActiveWorkerCount(): number {
+  return workers.length;
 }
