@@ -80,6 +80,19 @@ export class AuthController {
       next(error);
     }
   }
+
+  async devAdminLogin(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      sendSuccess(
+        res,
+        await authService.devAdminLogin(req.body?.email),
+        'Development admin session created.',
+        201,
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();

@@ -12,6 +12,7 @@ import { gamificationRouter } from '../modules/gamification/routes/gamification.
 import { subscriptionsRouter } from '../modules/subscriptions/routes/subscriptions.routes';
 import { reportsRouter } from '../modules/reports/routes/reports.routes';
 import { premiumRouter } from '../modules/premium/routes/premium.routes';
+import { adminRouter } from '../modules/admin/routes/admin.routes';
 
 /**
  * Global API v1 router.
@@ -30,6 +31,7 @@ v1Router.use('/gamification', gamificationRouter);
 v1Router.use('/subscriptions', subscriptionsRouter);
 v1Router.use('/reports', reportsRouter);
 v1Router.use('/premium', premiumRouter);
+v1Router.use('/admin', adminRouter);
 
 export function registerRoutes(appRouter: Router): void {
   appRouter.use('/health', healthRouter);
@@ -43,4 +45,5 @@ export function registerRoutes(appRouter: Router): void {
   appRouter.use('/subscriptions', subscriptionsRouter);
   appRouter.use('/reports', reportsRouter);
   appRouter.use('/premium', premiumRouter);
+  appRouter.use('/admin', adminRouter);
 }

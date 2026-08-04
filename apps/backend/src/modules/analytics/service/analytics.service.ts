@@ -36,6 +36,18 @@ const ALLOWED_EVENTS = new Set([
   'premium.assessment_completed',
   'premium.report_viewed',
   'premium.feature_engagement',
+  'admin.login',
+  'admin.dashboard_viewed',
+  'admin.candidate_viewed',
+  'admin.assessment_created',
+  'admin.assessment_updated',
+  'admin.assessment_published',
+  'admin.question_created',
+  'admin.question_updated',
+  'admin.report_generated',
+  'admin.platform_settings_updated',
+  'admin.audit_log_viewed',
+  'admin.hr_review_completed',
 ]);
 
 export class AnalyticsIngestService {

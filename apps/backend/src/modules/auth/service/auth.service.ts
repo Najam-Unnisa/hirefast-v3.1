@@ -7,9 +7,11 @@ import { ROLES } from '../../../constants/roles';
 import { refreshTokenStore } from '../../../infrastructure/auth/refresh-token.store';
 import { authProviderService } from '../../../providers/auth';
 import { trackEvent } from '../../../services/analytics.service';
+import { writeAuditLog } from '../../../services/audit.service';
 import {
   BadRequestError,
   ConflictError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from '../../../utils/errors';
@@ -235,6 +237,45 @@ export class AuthService {
     });
 
     trackEvent({ eventName: 'auth.dev_guest_login', userId: user.id });
+    return this.issueSession(user);
+  }
+
+  /** Non-production helper: sign in as the seeded ADMIN user. */
+  async devAdminLogin(emailInput: string | undefined): Promise<AuthTokenResult> {
+    if (env.isProduction) {
+      throw new NotFoundError('Route not found.');
+    }
+
+    const email = (
+      emailInput?.trim().toLowerCase() ||
+      process.env.SEED_ADMIN_EMAIL ||
+      'admin@hirefast.local'
+    ).toLowerCase();
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { role: true, profile: true },
+    });
+    if (!user || user.deletedAt) {
+      throw new NotFoundError('Admin user is not seeded.');
+    }
+    if (user.role.name !== ROLES.ADMIN) {
+      throw new ForbiddenError('That account is not an administrator.');
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    trackEvent({ eventName: 'admin.login', userId: user.id, properties: { method: 'dev' } });
+    await writeAuditLog({
+      actorId: user.id,
+      action: 'LOGIN',
+      resourceType: 'session',
+      resourceId: user.id,
+      message: `Admin login (${email})`,
+    });
     return this.issueSession(user);
   }
 
