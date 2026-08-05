@@ -72,6 +72,7 @@ export function SessionProvider({ children }: { children: ReactNode }): React.Re
     }
   }, [clearUser, setUser]);
 
+  // Mount-only bootstrap (clearUser is now stable in AuthProvider).
   useEffect(() => {
     void refreshUser();
   }, [refreshUser]);

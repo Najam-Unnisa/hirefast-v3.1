@@ -41,10 +41,12 @@ export function createApp(): Application {
     app.use(morgan('combined'));
   }
 
+  // Production keeps a hard ceiling; local/dev uses a high limit so session
+  // probes and hot reload do not block guest/admin flows during development.
   app.use(
     rateLimit({
       windowMs: env.rateLimit.windowMs,
-      max: env.rateLimit.max,
+      max: env.isProduction ? env.rateLimit.max : Math.max(env.rateLimit.max, 10_000),
       standardHeaders: true,
       legacyHeaders: false,
       message: {

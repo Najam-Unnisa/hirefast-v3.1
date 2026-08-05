@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import type { UserRoleValue } from '@hirefast/shared-types';
 
 /**
@@ -29,15 +29,21 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading] = useState(false);
 
+  // Stable identity — SessionProvider depends on clearUser in refreshUser/useEffect.
+  // Recreating clearUser when `user` changes caused an infinite GET /auth/me loop.
+  const clearUser = useCallback(() => {
+    setUser(null);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       isAuthenticated: Boolean(user),
       isLoading,
       setUser,
-      clearUser: () => setUser(null),
+      clearUser,
     }),
-    [user, isLoading],
+    [user, isLoading, clearUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
